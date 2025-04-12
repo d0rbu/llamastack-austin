@@ -113,15 +113,23 @@ function activate(context) {
                 autoDebugViewProvider.updateNodeDescription("suggestions", "Running debug...");
                 const result = await backend.debugTarget(target);
                 // Process results
-                const traceContent = result.trace || "No trace received.";
+                const traceContent = result.trace || ""; // Default to empty string
                 const cotContent = result.cot || "No CoT received.";
                 const suggestionContent = result.answer || "No suggestions received.";
-                autoDebugViewProvider.setNodeContent("trace", traceContent.split('\n'), // Pass as array, setNodeContent will join
-                traceContent ? "Content available" : "(empty)");
-                autoDebugViewProvider.setNodeContent("cot", cotContent, // Pass full string
-                cotContent ? "Content available" : "(empty)");
-                autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, // Pass full string
-                suggestionContent ? "Content available" : "(empty)");
+                // Split trace into lines for individual tree items
+                const traceLines = traceContent ? traceContent.split('\n') : []; // Handle empty trace
+                // Set the individual trace lines first
+                autoDebugViewProvider.setNodeContent("trace", traceLines, traceLines.length > 0 ? `(${traceLines.length} lines)` : "(empty)");
+                // Now, add the final viewer button for the trace
+                if (traceLines.length > 0) {
+                    autoDebugViewProvider.addFinalContentViewer("trace");
+                    // Optionally update description again after adding viewer
+                    autoDebugViewProvider.updateNodeDescription("trace", `(${traceLines.length} lines + Viewer)`);
+                }
+                // Set the CoT content (creates its viewer directly)
+                autoDebugViewProvider.setNodeContent("cot", cotContent, cotContent ? "Content available" : "(empty)");
+                // Set the Suggestions content (creates its viewer directly)
+                autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, suggestionContent ? "Content available" : "(empty)");
                 progress.report({ increment: 100, message: "Debugging complete!" });
             }
             catch (err) {
