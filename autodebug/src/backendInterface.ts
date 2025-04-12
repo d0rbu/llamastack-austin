@@ -21,9 +21,7 @@ export class BackendInterface {
      * @returns Array of build target strings
      */
     async fetchBuildTargets(makefilePath: string): Promise<string[]> {
-        if (this.mock) {
-            return this.mockFetchBuildTargets();
-        }
+        return this.mockFetchBuildTargets();
 
         try {
             const res = await fetch(`${BACKEND_URL}/analyze_makefile`, {
@@ -162,6 +160,6 @@ export class BackendInterface {
     
 
     async mockFetchBuildTargets(): Promise<string[]> {
-        return ['all', 'clean', 'test', 'install'];
+        return ['test_1', 'test_2', 'test_3'];
     }
 } 
