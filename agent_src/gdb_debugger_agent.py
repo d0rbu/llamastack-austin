@@ -66,14 +66,32 @@ def find_llm_model(client: LlamaStackClient, preferred_model_id: Optional[str] =
         console.print(f"Please ensure the Llama Stack server is running at {LLAMA_STACK_URL} and accessible.")
         exit(1)
 
+# def extract_gdb_command(llm_response: str) -> Optional[str]:
+#     """Extracts the GDB MI command from the LLM's response."""
+#     llm_response = llm_response.strip()
+#     if llm_response == "DONE":
+#         return "DONE"
+#     if re.match(r"^-[a-zA-Z0-9-]+(\s+.*)?$", llm_response):
+#          return llm_response
+#     console.print(f"[yellow]Warning:[/yellow] LLM response doesn't look like a valid GDB MI command or DONE: '{llm_response}'")
+#     return None
+
 def extract_gdb_command(llm_response: str) -> Optional[str]:
     """Extracts the GDB MI command from the LLM's response."""
     llm_response = llm_response.strip()
     if llm_response == "DONE":
         return "DONE"
+    
+    # Check if it matches a GDB MI command pattern
     if re.match(r"^-[a-zA-Z0-9-]+(\s+.*)?$", llm_response):
-         return llm_response
-    console.print(f"[yellow]Warning:[/yellow] LLM response doesn't look like a valid GDB MI command or DONE: '{llm_response}'")
+        return llm_response
+    
+    # More detailed debugging
+    if llm_response.startswith('-'):
+        console.print(f"[yellow]Warning:[/yellow] Command starts with '-' but doesn't match pattern: '{llm_response}'")
+    else:
+        console.print(f"[yellow]Warning:[/yellow] LLM response doesn't look like a valid GDB MI command or DONE: '{llm_response}'")
+    
     return None
 
 def format_gdb_output_for_llm(gdb_responses: List[Dict[str, Any]]) -> str:
