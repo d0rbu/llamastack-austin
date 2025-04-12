@@ -1,4 +1,5 @@
 llama-stack-client
+llama-stack
 pygdbmi
 rich # For potentially better output formatting
 # Add ollama if you plan to interact with it directly later

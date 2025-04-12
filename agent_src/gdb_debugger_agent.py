@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional
 # Llama Stack Imports
 from llama_stack_client import LlamaStackClient, Agent, AgentEventLogger
 from llama_stack_client.types.agents import Turn # Correct import for the Turn object
+from llama_stack.distribution.library_client import LlamaStackAsLibraryClient
 
 # Other Imports
 from pygdbmi.gdbcontroller import GdbController
@@ -19,7 +20,7 @@ from rich.syntax import Syntax
 
 # --- Configuration ---
 LLAMA_STACK_URL = "http://localhost:8321"
-DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct" # Example - REPLACE if needed
+DEFAULT_MODEL_ID = "groq/llama3-70b-8192" # Example - REPLACE if needed
 MAX_DEBUG_STEPS = 15 # Limit the number of interactions
 
 AGENT_INSTRUCTIONS = """
@@ -182,8 +183,11 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
 
         # 2. Initialize Llama Stack Client
         console.print(f"Connecting to Llama Stack server at {LLAMA_STACK_URL}...")
-        client = LlamaStackClient(base_url=LLAMA_STACK_URL)
-        # try:
+        # client = LlamaStackClient(base_url=LLAMA_STACK_URL)
+        client = LlamaStackAsLibraryClient(
+            "groq",)
+        client.initialize()
+        # try
         #     client.health.get()
         #     console.print("[green]Connected to Llama Stack server.[/green]")
         # except Exception as e:
@@ -282,7 +286,8 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
             console.print(f"Executing GDB command: [bold yellow]{gdb_command}[/bold yellow]")
             gdb_responses = []
             try:
-                cmd_token = f"cmd-{current_step}"
+                # cmd_token = f"cmd-{current_step}"
+                cmd_token = f"{current_step}"
                 gdb_responses = gdbmi.write(f"{cmd_token}{gdb_command}", timeout_sec=20)
                 console.print("GDB Output:")
                 print_gdb_output_human(gdb_responses)
