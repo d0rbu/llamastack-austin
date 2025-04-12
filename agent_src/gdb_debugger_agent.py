@@ -403,6 +403,7 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
         console.print(f"Final Status: {final_status}")
 
         # Print the generated summary
+        console.print("========================================")
         console.print(Panel(final_summary, title="LLM Summary of Findings", style="green", border_style="green"))
 
         # Print history for user reference (optional)

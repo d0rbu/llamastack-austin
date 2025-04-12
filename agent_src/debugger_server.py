@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, PlainTextResponse
 import uvicorn
 import asyncio
 import sys
@@ -7,13 +7,17 @@ import threading
 from pydantic import BaseModel
 from typing import Optional
 
-# Import your existing agent’s main() from gdb_debugger_agent.py.
+# Import your existing main() from gdb_debugger_agent.py.
 # Make sure that file is on your PYTHONPATH.
 from gdb_debugger_agent import main
 
 app = FastAPI(
-    title="GDB Debugger Agent Streaming Server",
-    description="A FastAPI server that streams debug session output from the GDB agent.",
+    title="GDB Debugger Agent Streaming Server with Summary",
+    description=(
+        "A FastAPI server that streams debug session output from the GDB agent. "
+        "The output is divided into a trace (everything before the delimiter) and a summary "
+        "(everything after a line with '========================================')."
+    ),
     version="1.0"
 )
 
@@ -22,58 +26,100 @@ class DebugRequest(BaseModel):
     bug_description: str
     model_id: Optional[str] = None
 
-# A custom writer that pushes every write to an asyncio queue
+# Global variables to store all agent output and a flag to signal completion.
+agent_output = ""
+agent_finished = False
+output_lock = threading.Lock()
+
+# A custom writer that pushes every write to an asyncio queue and appends to a global string.
 class QueueWriter:
     def __init__(self, loop: asyncio.AbstractEventLoop, queue: asyncio.Queue):
         self.loop = loop
         self.queue = queue
 
     def write(self, text: str):
+        global agent_output
         if text:
-            # Schedule putting text into the queue safely from a background thread.
+            with output_lock:
+                agent_output += text
+            # Schedule putting text into the queue safely from the background thread.
             asyncio.run_coroutine_threadsafe(self.queue.put(text), self.loop)
 
     def flush(self):
-        # No-op for flush
         pass
 
 @app.post("/debug_target")
 async def debug_target(request: DebugRequest):
     """
     Starts a debugging session and streams output as it’s produced.
-    The output is produced by your agent's main() method.
+    Only streams the trace portion (everything before the delimiter "========================================").
     """
+    global agent_output, agent_finished
+    # Reset globals for a new run.
+    with output_lock:
+        agent_output = ""
+    agent_finished = False
+
     loop = asyncio.get_event_loop()
     queue: asyncio.Queue = asyncio.Queue()
 
     def run_agent():
-        # Save and redirect stdout so that prints are intercepted.
+        global agent_finished
         old_stdout = sys.stdout
+        # Redirect stdout to our custom writer.
         sys.stdout = QueueWriter(loop, queue)
         try:
-            # Run the main agent routine.
+            # Execute the agent main routine.
             main(request.executable, request.bug_description, request.model_id)
         except Exception as e:
-            # Push any exception message into the queue.
             asyncio.run_coroutine_threadsafe(queue.put(f"Error: {e}\n"), loop)
         finally:
-            # Signal the end of the stream.
+            # When the agent is done, signal the end.
             asyncio.run_coroutine_threadsafe(queue.put("__END__"), loop)
             sys.stdout = old_stdout
+            agent_finished = True
 
     # Run the agent in a separate thread so we can stream output concurrently.
     threading.Thread(target=run_agent).start()
 
-    # Async generator that yields output chunks from the agent.
     async def event_generator():
+        """
+        Async generator that yields output chunks until the delimiter is encountered.
+        It assumes the delimiter ("========================================") is printed in one chunk.
+        """
         while True:
             chunk = await queue.get()
             if chunk == "__END__":
                 break
-            yield chunk
+            if "========================================" in chunk:
+                # If the delimiter appears in this chunk, yield only the part before it and finish.
+                idx = chunk.find("========================================")
+                yield chunk[:idx]
+                break
+            else:
+                yield chunk
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
+@app.get("/get_summary")
+async def get_summary():
+    """
+    Returns the summary of the debugging session (everything printed after the delimiter).
+    Waits until the agent has finished.
+    """
+    global agent_output, agent_finished
+    # Wait until the debugging session is complete.
+    while not agent_finished:
+        await asyncio.sleep(1)
+    with output_lock:
+        full_output = agent_output
+    delimiter = "========================================"
+    if delimiter in full_output:
+        idx = full_output.find(delimiter)
+        summary = full_output[idx + len(delimiter):].strip()
+        return PlainTextResponse(summary)
+    else:
+        return PlainTextResponse("No summary found.")
+
 if __name__ == "__main__":
-    # Run the FastAPI app on port 8000.
     uvicorn.run(app, host="0.0.0.0", port=8000)
