@@ -29,6 +29,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const channel = vscode.window.createOutputChannel("GDBuddy Trace");
+
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
         const backend = new BackendInterface(context);
         
@@ -61,12 +63,26 @@ export function activate(context: vscode.ExtensionContext) {
     
                     // Call the backend method to start debugging and get the stream
                     const debugStream = backend.debugTarget(target, bugDescription);
+
+                    let lineBuffer: string = ""; // Buffer for latest line
     
                     // Iterate over the async generator to process each DebugResponse
                     for await (const result of debugStream) {
                         if (result.type === 'trace') {
                             traceLines.push(result.content);
                             autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
+                            const lines = result.content.split('\n')
+
+                            for (let i = 0; i < lines.length; i++) {
+                                const isLastLine = i === lines.length - 1;
+
+                                lineBuffer += lines[i]
+                                if (!isLastLine) {
+                                    channel.appendLine(lineBuffer + '\n'); // Append the current line to the buffer
+                                    // channel.show(true); // Show the output channel
+                                    lineBuffer = ""; // Reset the buffer for the next line
+                                }
+                            }
                         } else if (result.type === 'answer') {
                             // Once we hit 'answer', finish the cot section and display it in the webview
                             if (currentSection === 'trace') {
