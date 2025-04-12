@@ -3,10 +3,11 @@ interface DebugTreeItemData {
     id: string; // Unique ID for the item
     label: string; // Display label
     description?: string; // Optional: Text shown next to the label
-    content?: string; // Optional: Raw content, maybe for tooltip or full view later
+    content?: string; // Optional: Raw content (full markdown for CoT/Suggestions)
     children: DebugTreeItemData[]; // Children nodes
     isCategory: boolean; // Flag to distinguish category nodes from content lines
     icon?: vscode.ThemeIcon; // Optional specific icon
+    command?: vscode.Command; // Optional command for the tree item
 }
 
 
@@ -43,9 +44,10 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
 
         const item = new vscode.TreeItem(data.label, collapsibleState);
         item.id = data.id;
-        item.tooltip = data.content || data.label; // Tooltip can still show full content if needed
+        item.tooltip = data.content || data.label;
         item.iconPath = data.icon;
         item.description = data.description;
+        item.command = data.command;
         // switch (data.label) {
         //     case "Full trace":
         //         item.iconPath = new vscode.ThemeIcon('list-unordered'); // Or 'checklist', 'references'
@@ -62,13 +64,20 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
         // }
         // return item;
         if (!data.isCategory) {
-            const MAX_LABEL_LENGTH = 150;
-            if (item.label && typeof item.label === 'string' && item.label.length > MAX_LABEL_LENGTH) {
-                item.label = item.label.substring(0, MAX_LABEL_LENGTH) + "...";
+            // For regular trace lines
+            if (!item.command) { // Don't override formatting for command items
+                 const MAX_LABEL_LENGTH = 150;
+                 if (item.label && typeof item.label === 'string' && item.label.length > MAX_LABEL_LENGTH) {
+                    item.label = item.label.substring(0, MAX_LABEL_LENGTH) + "...";
+                 }
+                 // Use 'dash' icon for simple lines
+                 item.iconPath = item.iconPath || new vscode.ThemeIcon('dash');
+                 item.description = undefined; // Content lines shouldn't have descriptions
+            } else {
+                 // For special single children (CoT, Suggestions) that have commands
+                 item.iconPath = item.iconPath || new vscode.ThemeIcon('go-to-file'); // Icon indicating action
+                 item.tooltip = "Click to view full content"; // More specific tooltip
             }
-            item.iconPath = item.iconPath || new vscode.ThemeIcon('debug-console');
-            // Content lines generally shouldn't have descriptions
-            item.description = undefined;
         }
 
         return item;
@@ -94,16 +103,16 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
 
     getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
         if (element && element.id) {
-            // If an element is passed, find its data and return its children mapped to TreeItems
             const parentData = this.findNodeById(element.id, this.rootItems);
             if (parentData) {
-                return Promise.resolve(parentData.children.map(child => this.dataToTreeItem(child)));
+                // Type child explicitly
+                return Promise.resolve(parentData.children.map((child: DebugTreeItemData) => this.dataToTreeItem(child)));
             }
         } else {
-            // If no element is passed, return the root items
-            return Promise.resolve(this.rootItems.map(item => this.dataToTreeItem(item)));
+            // Type item explicitly
+            return Promise.resolve(this.rootItems.map((item: DebugTreeItemData) => this.dataToTreeItem(item)));
         }
-        return Promise.resolve([]); // Should not happen in practice
+        return Promise.resolve([]);
     }
 
     // --- Methods to update specific sections ---
@@ -121,55 +130,91 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
         }
     }
 
-    public setNodeContent(nodeId: string, newContentLines: string[], description?: string) {
+    public setNodeContent(nodeId: string, content: string[] | string, description?: string) {
         const node = this.findRootNode(nodeId);
-        if (node && node.isCategory) {
-            node.children = newContentLines.map(line => {
-                const childId = `${nodeId}_content_${this.contentCounter++}`;
-                return {
-                    id: childId,
-                    label: line,
-                    content: line, // Store full line content if needed
-                    children: [],
-                    isCategory: false,
-                };
-            });
-             // Update description if provided
-             if (description !== undefined) {
-                 node.description = description;
-             } else {
-                 // Default description update based on content, or clear it
-                 node.description = newContentLines.length > 0 ? `(${newContentLines.length} items)` : "(empty)";
-             }
-
-            this._onDidChangeTreeData.fire();
-        } else {
-            console.warn(`Category node with id "${nodeId}" not found for setting content.`);
+        if (!node || !node.isCategory) {
+             console.warn(`Category node with id "${nodeId}" not found for setting content.`);
+             return;
         }
+
+        if (nodeId === 'trace' && Array.isArray(content)) {
+             // Handle trace lines as before
+             node.children = content.map((line: string) => {
+                 const childId = `${nodeId}_content_${this.contentCounter++}`;
+                 return {
+                     id: childId, label: line, content: line, children: [], isCategory: false,
+                 };
+             });
+             node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
+
+        } else if ((nodeId === 'cot' || nodeId === 'suggestions') && typeof content === 'string') {
+            // Handle CoT and Suggestions as single markdown string
+            const childId = `${nodeId}_content_${this.contentCounter++}`;
+            const fullMarkdown = content;
+            let childLabel = "View Content"; // Default label
+             if (nodeId === 'cot') childLabel = "View Chain of Thought";
+             if (nodeId === 'suggestions') childLabel = "View Suggestions";
+
+            node.children = [{
+                 id: childId,
+                 label: childLabel, // Specific label
+                 content: fullMarkdown, // Store the FULL markdown here
+                 children: [],
+                 isCategory: false,
+                 // Define the command to be executed when this item is clicked
+                 command: {
+                     command: 'autodebug.showMarkdownContent', // Command ID registered in extension.ts
+                     title: 'Show Content', // Command title (used internally/tooltip)
+                     arguments: [fullMarkdown] // Pass the full markdown as argument
+                 }
+            }];
+            // Update description (maybe just indicate content is loaded)
+            node.description = description ?? "(Content available)";
+
+        } else {
+             console.warn(`Invalid content type or nodeId for setNodeContent. NodeId: ${nodeId}, Content type: ${typeof content}`);
+             // Fallback: Clear children and set description
+             node.children = [];
+             node.description = description ?? "(Invalid content)";
+        }
+
+        this._onDidChangeTreeData.fire();
     }
 
     public appendNodeContentLine(nodeId: string, newTextLine: string, updateDescription: boolean = true) {
-        const node = this.findRootNode(nodeId);
-        if (node && node.isCategory) {
-            const childId = `${nodeId}_content_${this.contentCounter++}`;
-            node.children.push({
-                id: childId,
-                label: newTextLine,
-                content: newTextLine,
-                children: [],
-                isCategory: false,
-            });
-
-            // Optionally update the description to reflect the new count
-            if (updateDescription) {
-                node.description = `(${node.children.length} items)`;
+        if (nodeId === 'cot' || nodeId === 'suggestions') {
+            console.warn(`Appending lines directly is not standard for node '${nodeId}'. Use setNodeContent.`);
+            // Optional: Implement appending to the single child's content if needed for streaming
+            const node = this.findRootNode(nodeId);
+            if (node && node.children.length === 1) {
+                node.children[0].content += "\n" + newTextLine;
+                // Re-assign command arguments if needed? Might be complex.
+                // Firing change event on the parent is usually enough.
+                this._onDidChangeTreeData.fire();
             }
-
-            this._onDidChangeTreeData.fire();
-        } else {
-            console.warn(`Category node with id "${nodeId}" not found for appending content.`);
+            return;
         }
-    }
+
+       // Original logic for 'trace'
+       const node = this.findRootNode(nodeId);
+       if (node && node.isCategory) {
+           // ... (rest of the original append logic for trace) ...
+           const childId = `${nodeId}_content_${this.contentCounter++}`;
+           node.children.push({
+               id: childId,
+               label: newTextLine,
+               content: newTextLine,
+               children: [],
+               isCategory: false,
+           });
+           if (updateDescription) {
+               node.description = `(${node.children.length} items)`;
+           }
+           this._onDidChangeTreeData.fire();
+       } else {
+           console.warn(`Category node with id "${nodeId}" not found for appending content.`);
+       }
+   }
 
 
     public clearNodeContent(nodeId: string, description?: string) {
