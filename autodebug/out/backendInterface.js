@@ -166,7 +166,7 @@ class BackendInterface {
                 if (answerText.trim() === '') {
                     yield {
                         type: 'answer',
-                        content: 'No final answer available'
+                        content: 'empty answer'
                     };
                     return;
                 }
