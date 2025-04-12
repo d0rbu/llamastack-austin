@@ -11,6 +11,8 @@ from typing import List, Dict, Any, Optional
 from llama_stack_client import LlamaStackClient, Agent, AgentEventLogger
 from llama_stack_client.types.agents import Turn # Correct import for the Turn object
 # from llama_stack.distribution.library_client import LlamaStackAsLibraryClient # Commented out as it wasn't fully integrated and requires setup
+from llama_stack.distribution.library_client import LlamaStackAsLibraryClient
+
 
 # Other Imports
 from pygdbmi.gdbcontroller import GdbController
@@ -21,7 +23,7 @@ from rich.syntax import Syntax
 # --- Configuration ---
 LLAMA_STACK_URL = "http://localhost:8321"
 # Make sure this model is available on your Llama Stack server (local or via provider)
-DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
+DEFAULT_MODEL_ID = "groq/llama-3.1-8b-instant"
 MAX_DEBUG_STEPS = 15 # Limit the number of interactions
 LOOP_DELAY_SECONDS = 5 # Delay between LLM calls to avoid rate limiting
 
@@ -190,38 +192,25 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
 
         # Load the executable
         console.print(f"Loading executable '{executable_path}' into GDB...")
-        # Use a numeric token as per GDB MI spec, often starting from 1
-        load_token_val = 1
-        response = gdbmi.write(f'{load_token_val}-file-exec-and-symbols "{executable_path}"', timeout_sec=10)
-        print_gdb_output_human(response)
+        load_token = "load-exec"
+        response = gdbmi.write(f'1-file-exec-and-symbols "{executable_path}"', timeout_sec=10)
 
-        # Correctly check token AND class for success
-        load_successful = any(r.get("token") == load_token_val and r.get("type") == "result" and r.get("class") == "done" for r in response)
+        print_gdb_output_human(response)
+        load_successful = any(r.get("token") == 1 and r.get("type") == "result" and r.get("message") == "done" for r in response)
 
         if not load_successful:
             console.print(f"[red]Error:[/red] Failed to load executable in GDB. Check GDB output above.")
             for r in response:
-                 # Correctly check class for error
-                 if r.get("token") == load_token_val and r.get("type") == "result" and r.get("class") == "error":
-                     # Extract error message from payload if available
-                     error_msg = r.get('payload', {}).get('msg', 'Unknown GDB error')
-                     console.print(f"  GDB Error Payload: {error_msg}")
+                if r.get("type") == "result" and r.get("message") == "error":
+                    console.print(f"  GDB Error Payload: {r.get('payload', {}).get('msg', 'Unknown error')}")
             return
 
         # 2. Initialize Llama Stack Client
         console.print(f"Connecting to Llama Stack server at {LLAMA_STACK_URL}...")
         # Default client connecting to the server URL
-        client = LlamaStackClient(base_url=LLAMA_STACK_URL)
-
-        # Optional: Health check (if endpoint exists and client supports it)
-        try:
-            # Attempt a simple listing as a health check proxy
-            client.models.list(limit=1)
-            console.print("[green]Connected to Llama Stack server (model listing successful).[/green]")
-        except Exception as e:
-            console.print(f"[red]Error connecting or communicating with Llama Stack server:[/red] {e}")
-            console.print("Please ensure the server is running and accessible.")
-            return
+        client = LlamaStackAsLibraryClient(
+            "groq",)
+        client.initialize()
 
         # 3. Setup Agent
         selected_model_id = find_llm_model(client, model_id or DEFAULT_MODEL_ID)
