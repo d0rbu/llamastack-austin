@@ -1,5 +1,5 @@
 import requests
-url = "http://localhost:11434/api/generate"
+url = "http://localhost:8321/api/generate"
 try:
     response = requests.post(url, json={"prompt": "Say 'TEST_OK'", "stream": False}, timeout=10)
     if response.ok and "TEST_OK" in response.json()["response"]:

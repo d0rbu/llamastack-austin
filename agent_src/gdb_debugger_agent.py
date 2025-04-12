@@ -154,7 +154,7 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
 
         print_gdb_output_human(response)
         load_successful = any(r.get("token") == 1 and r.get("type") == "result" and r.get("message") == "done" for r in response)
-        
+
         if not load_successful:
             console.print(f"[red]Error:[/red] Failed to load executable in GDB. Check GDB output above.")
             for r in response:
@@ -165,12 +165,12 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
         # 2. Initialize Llama Stack Client
         console.print(f"Connecting to Llama Stack server at {LLAMA_STACK_URL}...")
         client = LlamaStackClient(base_url=LLAMA_STACK_URL)
-        try:
-            client.health.get()
-            console.print("[green]Connected to Llama Stack server.[/green]")
-        except Exception as e:
-            console.print(f"[red]Error connecting to Llama Stack server:[/red] {e}")
-            return
+        # try:
+        #     client.health.get()
+        #     console.print("[green]Connected to Llama Stack server.[/green]")
+        # except Exception as e:
+        #     console.print(f"[red]Error connecting to Llama Stack server:[/red] {e}")
+        #     return
 
         # 3. Setup Agent
         selected_model_id = find_llm_model(client, model_id or DEFAULT_MODEL_ID)
