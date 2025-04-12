@@ -1,0 +1,727 @@
+(.venv) [jsinghal@fedora agent_src]$ python gdb_debugger_agent.py test_executables/test_1 "segfaulting while running" --delay 15
+╭─────────────────────────────────────────────────────────────────────── Setup ────────────────────────────────────────────────────────────────────────╮
+│ Starting GDB Debugger Agent                                                                                                                          │
+│ Executable: test_executables/test_1                                                                                                                  │
+│ Bug: segfaulting while running                                                                                                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Starting GDB...
+GDB MI Controller Initialized.
+Loading executable 'test_executables/test_1' into GDB...
+[                                                                                                                                                       
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "thread-group-added",                                                                                                                    
+    "payload": {                                                                                                                                        
+      "id": "i1"                                                                                                                                        
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "result",                                                                                                                                   
+    "message": "done",                                                                                                                                  
+    "payload": null,                                                                                                                                    
+    "token": 1,                                                                                                                                         
+    "stream": "stdout"                                                                                                                                  
+  }                                                                                                                                                     
+]                                                                                                                                                       
+Connecting to Llama Stack server at http://localhost:8321...
+Using config groq:
+apis:
+- agents
+- datasetio
+- eval
+- inference
+- safety
+- scoring
+- telemetry
+- tool_runtime
+- vector_io
+benchmarks: []
+container_image: null
+datasets: []
+image_name: groq
+logging: null
+metadata_store:
+  db_path: /home/jsinghal/.llama/distributions/groq/registry.db
+  namespace: null
+  type: sqlite
+models:
+- metadata: {}
+  model_id: groq/llama3-8b-8192
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama3-8b-8192
+- metadata: {}
+  model_id: meta-llama/Llama-3.1-8B-Instruct
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama3-8b-8192
+- metadata: {}
+  model_id: groq/llama-3.1-8b-instant
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama-3.1-8b-instant
+- metadata: {}
+  model_id: groq/llama3-70b-8192
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama3-70b-8192
+- metadata: {}
+  model_id: meta-llama/Llama-3-70B-Instruct
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama3-70b-8192
+- metadata: {}
+  model_id: groq/llama-3.3-70b-versatile
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama-3.3-70b-versatile
+- metadata: {}
+  model_id: meta-llama/Llama-3.3-70B-Instruct
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama-3.3-70b-versatile
+- metadata: {}
+  model_id: groq/llama-3.2-3b-preview
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama-3.2-3b-preview
+- metadata: {}
+  model_id: meta-llama/Llama-3.2-3B-Instruct
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - llm
+  provider_id: groq
+  provider_model_id: groq/llama-3.2-3b-preview
+- metadata:
+    embedding_dimension: 384
+  model_id: all-MiniLM-L6-v2
+  model_type: !!python/object/apply:llama_stack.apis.models.models.ModelType
+  - embedding
+  provider_id: sentence-transformers
+  provider_model_id: null
+providers:
+  agents:
+  - config:
+      persistence_store:
+        db_path: /home/jsinghal/.llama/distributions/groq/agents_store.db
+        namespace: null
+        type: sqlite
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+  datasetio:
+  - config:
+      kvstore:
+        db_path: /home/jsinghal/.llama/distributions/groq/huggingface_datasetio.db
+        namespace: null
+        type: sqlite
+    provider_id: huggingface
+    provider_type: remote::huggingface
+  - config:
+      kvstore:
+        db_path: /home/jsinghal/.llama/distributions/groq/localfs_datasetio.db
+        namespace: null
+        type: sqlite
+    provider_id: localfs
+    provider_type: inline::localfs
+  eval:
+  - config:
+      kvstore:
+        db_path: /home/jsinghal/.llama/distributions/groq/meta_reference_eval.db
+        namespace: null
+        type: sqlite
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+  inference:
+  - config:
+      api_key: '********'
+      url: https://api.groq.com
+    provider_id: groq
+    provider_type: remote::groq
+  - config: {}
+    provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+  safety:
+  - config:
+      excluded_categories: []
+    provider_id: llama-guard
+    provider_type: inline::llama-guard
+  scoring:
+  - config: {}
+    provider_id: basic
+    provider_type: inline::basic
+  - config: {}
+    provider_id: llm-as-judge
+    provider_type: inline::llm-as-judge
+  - config:
+      openai_api_key: '********'
+    provider_id: braintrust
+    provider_type: inline::braintrust
+  telemetry:
+  - config:
+      service_name: "\u200B"
+      sinks: sqlite
+      sqlite_db_path: /home/jsinghal/.llama/distributions/groq/trace_store.db
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+  tool_runtime:
+  - config:
+      api_key: '********'
+      max_results: 3
+    provider_id: brave-search
+    provider_type: remote::brave-search
+  - config:
+      api_key: '********'
+      max_results: 3
+    provider_id: tavily-search
+    provider_type: remote::tavily-search
+  - config: {}
+    provider_id: code-interpreter
+    provider_type: inline::code-interpreter
+  - config: {}
+    provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+  vector_io:
+  - config:
+      kvstore:
+        db_path: /home/jsinghal/.llama/distributions/groq/faiss_store.db
+        namespace: null
+        type: sqlite
+    provider_id: faiss
+    provider_type: inline::faiss
+scoring_fns: []
+server:
+  auth: null
+  port: 8321
+  tls_certfile: null
+  tls_keyfile: null
+shields: []
+tool_groups:
+- args: null
+  mcp_endpoint: null
+  provider_id: tavily-search
+  toolgroup_id: builtin::websearch
+- args: null
+  mcp_endpoint: null
+  provider_id: rag-runtime
+  toolgroup_id: builtin::rag
+- args: null
+  mcp_endpoint: null
+  provider_id: code-interpreter
+  toolgroup_id: builtin::code_interpreter
+vector_dbs: []
+version: '2'
+
+Using preferred model: groq/llama-3.1-8b-instant
+Created agent session: 4d494d36-490a-4c6b-a5f0-346d16a08179
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Debugging Step 1/15                                                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Querying LLM for next GDB command...
+15:48:09 - LiteLLM:INFO: utils.py:3085 - 
+LiteLLM completion() model= llama-3.1-8b-instant; provider = groq
+INFO     2025-04-12 15:48:09,005 LiteLLM:3085 uncategorized:                                                            
+         LiteLLM completion() model= llama-3.1-8b-instant; provider = groq                                              
+15:48:10 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:48:10,125 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+15:48:11 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:48:11,919 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+
+LLM Suggested Raw: '-exec-run'
+Executing GDB command: -exec-run
+GDB Output:
+[                                                                                                                                                       
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "thread-group-started",                                                                                                                  
+    "payload": {                                                                                                                                        
+      "id": "i1",                                                                                                                                       
+      "pid": "267182"                                                                                                                                   
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "thread-created",                                                                                                                        
+    "payload": {                                                                                                                                        
+      "id": "1",                                                                                                                                        
+      "group-id": "i1"                                                                                                                                  
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "library-loaded",                                                                                                                        
+    "payload": {                                                                                                                                        
+      "id": "/lib64/ld-linux-x86-64.so.2",                                                                                                              
+      "target-name": "/lib64/ld-linux-x86-64.so.2",                                                                                                     
+      "host-name": "/lib64/ld-linux-x86-64.so.2",                                                                                                       
+      "symbols-loaded": "0",                                                                                                                            
+      "thread-group": "i1",                                                                                                                             
+      "ranges": [                                                                                                                                       
+        {                                                                                                                                               
+          "from": "0x00007ffff7fc9000",                                                                                                                 
+          "to": "0x00007ffff7ff09f5"                                                                                                                    
+        }                                                                                                                                               
+      ]                                                                                                                                                 
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "\nThis GDB supports auto-downloading debuginfo from the following URLs:\n",                                                             
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "  <https://debuginfod.fedoraproject.org/>\n",                                                                                           
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "Enable debuginfod for this session? (y or [n]) [answered N; input not from terminal]\n",                                                
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "Debuginfod has been disabled.\nTo make this setting permanent, add 'set debuginfod enabled off' to .gdbinit.\n",                        
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "result",                                                                                                                                   
+    "message": "running",                                                                                                                               
+    "payload": null,                                                                                                                                    
+    "token": 2,                                                                                                                                         
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "running",                                                                                                                               
+    "payload": {                                                                                                                                        
+      "thread-id": "all"                                                                                                                                
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "library-loaded",                                                                                                                        
+    "payload": {                                                                                                                                        
+      "id": "/lib64/libc.so.6",                                                                                                                         
+      "target-name": "/lib64/libc.so.6",                                                                                                                
+      "host-name": "/lib64/libc.so.6",                                                                                                                  
+      "symbols-loaded": "0",                                                                                                                            
+      "thread-group": "i1",                                                                                                                             
+      "ranges": [                                                                                                                                       
+        {                                                                                                                                               
+          "from": "0x00007ffff7dd6800",                                                                                                                 
+          "to": "0x00007ffff7f42cfd"                                                                                                                    
+        }                                                                                                                                               
+      ]                                                                                                                                                 
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "[Thread debugging using libthread_db enabled]\n",                                                                                       
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "Using host libthread_db library \"/lib64/libthread_db.so.1\".\n",                                                                       
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "\nProgram",                                                                                                                             
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": " received signal SIGSEGV, Segmentation fault.\n",                                                                                       
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "0x000000000040117d in cause_crash (input=0x402038 \"This input is definitely too long for the small buffer\") at test_1.c:9\n",         
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "9\t}\n",                                                                                                                                
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "stopped",                                                                                                                               
+    "payload": {                                                                                                                                        
+      "reason": "signal-received",                                                                                                                      
+      "signal-name": "SIGSEGV",                                                                                                                         
+      "signal-meaning": "Segmentation fault",                                                                                                           
+      "frame": {                                                                                                                                        
+        "addr": "0x000000000040117d",                                                                                                                   
+        "func": "cause_crash",                                                                                                                          
+        "args": [                                                                                                                                       
+          {                                                                                                                                             
+            "name": "input",                                                                                                                            
+            "value": "0x402038 \"This input is definitely too long for the small buffer\""                                                              
+          }                                                                                                                                             
+        ],                                                                                                                                              
+        "file": "test_1.c",                                                                                                                             
+        "fullname": "/home/jsinghal/Code/llamastack_hackathon/llamastack-austin/agent_src/test_executables/test_1.c",                                   
+        "line": "9",                                                                                                                                    
+        "arch": "i386:x86-64"                                                                                                                           
+      },                                                                                                                                                
+      "thread-id": "1",                                                                                                                                 
+      "stopped-threads": "all",                                                                                                                         
+      "core": "3"                                                                                                                                       
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  }                                                                                                                                                     
+]                                                                                                                                                       
+Pausing for 15.0 second(s)...
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Debugging Step 2/15                                                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Querying LLM for next GDB command...
+15:48:27 - LiteLLM:INFO: utils.py:3085 - 
+LiteLLM completion() model= llama-3.1-8b-instant; provider = groq
+INFO     2025-04-12 15:48:27,145 LiteLLM:3085 uncategorized:                                                            
+         LiteLLM completion() model= llama-3.1-8b-instant; provider = groq                                              
+15:48:27 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:48:27,810 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+15:48:27 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+
+LLM Suggested Raw: '-stack-list-frames'
+INFO     2025-04-12 15:48:27,818 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+Executing GDB command: -stack-list-frames
+GDB Output:
+[                                                                                                                                                       
+  {                                                                                                                                                     
+    "type": "result",                                                                                                                                   
+    "message": "done",                                                                                                                                  
+    "payload": {                                                                                                                                        
+      "stack": [                                                                                                                                        
+        {                                                                                                                                               
+          "level": "0",                                                                                                                                 
+          "addr": "0x000000000040117d",                                                                                                                 
+          "func": "cause_crash",                                                                                                                        
+          "file": "test_1.c",                                                                                                                           
+          "fullname": "/home/jsinghal/Code/llamastack_hackathon/llamastack-austin/agent_src/test_executables/test_1.c",                                 
+          "line": "9",                                                                                                                                  
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "1",                                                                                                                                 
+          "addr": "0x7420796c6574696e",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "2",                                                                                                                                 
+          "addr": "0x20676e6f6c206f6f",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "3",                                                                                                                                 
+          "addr": "0x2065687420726f66",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "4",                                                                                                                                 
+          "addr": "0x7562206c6c616d73",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "5",                                                                                                                                 
+          "addr": "0x00007f0072656666",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "6",                                                                                                                                 
+          "addr": "0x00007fffffffd590",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "7",                                                                                                                                 
+          "addr": "0x00007fffffffd668",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "8",                                                                                                                                 
+          "addr": "0x0000000100400040",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "9",                                                                                                                                 
+          "addr": "0x000000000040117e",                                                                                                                 
+          "func": "cause_crash",                                                                                                                        
+          "file": "test_1.c",                                                                                                                           
+          "fullname": "/home/jsinghal/Code/llamastack_hackathon/llamastack-austin/agent_src/test_executables/test_1.c",                                 
+          "line": "9",                                                                                                                                  
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "10",                                                                                                                                
+          "addr": "0x00007fffffffd668",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "11",                                                                                                                                
+          "addr": "0x27103f128bf6efd4",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "12",                                                                                                                                
+          "addr": "0x0000000000000001",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        },                                                                                                                                              
+        {                                                                                                                                               
+          "level": "13",                                                                                                                                
+          "addr": "0x0000000000000000",                                                                                                                 
+          "func": "??",                                                                                                                                 
+          "arch": "i386:x86-64"                                                                                                                         
+        }                                                                                                                                               
+      ]                                                                                                                                                 
+    },                                                                                                                                                  
+    "token": 3,                                                                                                                                         
+    "stream": "stdout"                                                                                                                                  
+  }                                                                                                                                                     
+]                                                                                                                                                       
+Pausing for 15.0 second(s)...
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Debugging Step 3/15                                                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Querying LLM for next GDB command...
+15:48:43 - LiteLLM:INFO: utils.py:3085 - 
+LiteLLM completion() model= llama-3.1-8b-instant; provider = groq
+INFO     2025-04-12 15:48:43,038 LiteLLM:3085 uncategorized:                                                            
+         LiteLLM completion() model= llama-3.1-8b-instant; provider = groq                                              
+15:48:43 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:48:43,981 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+15:48:43 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:48:43,990 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+
+LLM Suggested Raw: '-data-evaluate-expression input'
+Executing GDB command: -data-evaluate-expression input
+GDB Output:
+[                                                                                                                                                       
+  {                                                                                                                                                     
+    "type": "result",                                                                                                                                   
+    "message": "done",                                                                                                                                  
+    "payload": {                                                                                                                                        
+      "value": "0x402038 \"This input is definitely too long for the small buffer\""                                                                    
+    },                                                                                                                                                  
+    "token": 4,                                                                                                                                         
+    "stream": "stdout"                                                                                                                                  
+  }                                                                                                                                                     
+]                                                                                                                                                       
+Pausing for 15.0 second(s)...
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Debugging Step 4/15                                                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Querying LLM for next GDB command...
+15:48:59 - LiteLLM:INFO: utils.py:3085 - 
+LiteLLM completion() model= llama-3.1-8b-instant; provider = groq
+INFO     2025-04-12 15:48:59,202 LiteLLM:3085 uncategorized:                                                            
+         LiteLLM completion() model= llama-3.1-8b-instant; provider = groq                                              
+15:49:06 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:49:06,909 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+15:49:07 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:49:07,219 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+
+LLM Suggested Raw: '-break-insert cause_crash'
+Executing GDB command: -break-insert cause_crash
+GDB Output:
+[                                                                                                                                                       
+  {                                                                                                                                                     
+    "type": "result",                                                                                                                                   
+    "message": "done",                                                                                                                                  
+    "payload": {                                                                                                                                        
+      "bkpt": {                                                                                                                                         
+        "number": "1",                                                                                                                                  
+        "type": "breakpoint",                                                                                                                           
+        "disp": "keep",                                                                                                                                 
+        "enabled": "y",                                                                                                                                 
+        "addr": "0x0000000000401152",                                                                                                                   
+        "func": "cause_crash",                                                                                                                          
+        "file": "test_1.c",                                                                                                                             
+        "fullname": "/home/jsinghal/Code/llamastack_hackathon/llamastack-austin/agent_src/test_executables/test_1.c",                                   
+        "line": "7",                                                                                                                                    
+        "thread-groups": [                                                                                                                              
+          "i1"                                                                                                                                          
+        ],                                                                                                                                              
+        "times": "0",                                                                                                                                   
+        "original-location": "cause_crash"                                                                                                              
+      }                                                                                                                                                 
+    },                                                                                                                                                  
+    "token": 5,                                                                                                                                         
+    "stream": "stdout"                                                                                                                                  
+  }                                                                                                                                                     
+]                                                                                                                                                       
+Pausing for 15.0 second(s)...
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Debugging Step 5/15                                                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Querying LLM for next GDB command...
+15:49:22 - LiteLLM:INFO: utils.py:3085 - 
+LiteLLM completion() model= llama-3.1-8b-instant; provider = groq
+INFO     2025-04-12 15:49:22,435 LiteLLM:3085 uncategorized:                                                            
+         LiteLLM completion() model= llama-3.1-8b-instant; provider = groq                                              
+15:49:23 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:49:23,285 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+
+LLM Suggested Raw: '-exec-continue'
+15:49:23 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+Executing GDB command: -exec-continue
+INFO     2025-04-12 15:49:23,714 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+GDB Output:
+[                                                                                                                                                       
+  {                                                                                                                                                     
+    "type": "result",                                                                                                                                   
+    "message": "running",                                                                                                                               
+    "payload": null,                                                                                                                                    
+    "token": 6,                                                                                                                                         
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "running",                                                                                                                               
+    "payload": {                                                                                                                                        
+      "thread-id": "all"                                                                                                                                
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "\nProgram terminated with signal ",                                                                                                     
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "SIGSEGV, Segmentation fault.\n",                                                                                                        
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "console",                                                                                                                                  
+    "message": null,                                                                                                                                    
+    "payload": "The program no longer exists.\n",                                                                                                       
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "thread-exited",                                                                                                                         
+    "payload": {                                                                                                                                        
+      "id": "1",                                                                                                                                        
+      "group-id": "i1"                                                                                                                                  
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "thread-group-exited",                                                                                                                   
+    "payload": {                                                                                                                                        
+      "id": "i1"                                                                                                                                        
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  },                                                                                                                                                    
+  {                                                                                                                                                     
+    "type": "notify",                                                                                                                                   
+    "message": "stopped",                                                                                                                               
+    "payload": {                                                                                                                                        
+      "reason": "exited-signalled",                                                                                                                     
+      "signal-name": "SIGSEGV",                                                                                                                         
+      "signal-meaning": "Segmentation fault"                                                                                                            
+    },                                                                                                                                                  
+    "token": null,                                                                                                                                      
+    "stream": "stdout"                                                                                                                                  
+  }                                                                                                                                                     
+]                                                                                                                                                       
+Detected 'thread-group-exited'
+GDB process or target program appears to have terminated based on output. Stopping.
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Generating Final Summary via LLM                                                                                                                     │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+15:49:23 - LiteLLM:INFO: utils.py:3085 - 
+LiteLLM completion() model= llama-3.1-8b-instant; provider = groq
+INFO     2025-04-12 15:49:23,932 LiteLLM:3085 uncategorized:                                                            
+         LiteLLM completion() model= llama-3.1-8b-instant; provider = groq                                              
+15:49:24 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:49:24,921 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+15:49:25 - LiteLLM:INFO: cost_calculator.py:636 - selected model name for cost calculation: groq/llama-3.1-8b-instant
+INFO     2025-04-12 15:49:25,233 LiteLLM:636 uncategorized: selected model name for cost calculation:                   
+         groq/llama-3.1-8b-instant                                                                                      
+Summary generated.
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Debugging Session Summary                                                                                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Initial Bug: segfaulting while running
+Executable: test_executables/test_1
+Total Steps Attempted: 5
+Final Status: GDB Terminated or Communication Lost
+╭────────────────────────────────────────────────────────────── LLM Summary of Findings ───────────────────────────────────────────────────────────────╮
+│ **Summary:**                                                                                                                                         │
+│                                                                                                                                                      │
+│ The bug is a segmentation fault (SIGSEGV) caused by attempting to access memory at address 0x402038, which is likely due to a buffer overflow in the │
+│ `cause_crash` function at `test_1.c:9`. The function is called with an input string that is too long for the buffer, resulting in a crash.           │
+│                                                                                                                                                      │
+│ **Likely Root Cause:** Buffer overflow in `cause_crash` function at `test_1.c:9`.                                                                    │
+│                                                                                                                                                      │
+│ **Specific Location:** `test_1.c:9`.                                                                                                                 │
+│                                                                                                                                                      │
+│ **Potential Fix:** Increase the buffer size in the `cause_crash` function to prevent buffer overflow.                                                │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Attempting to exit GDB cleanly...
+GDB exited.
+Agent finished.
+ERROR    2025-04-12 15:49:26,009 asyncio:1820 uncategorized: Task was destroyed but it is pending!                      
+         task: <Task pending name='Task-338' coro=<<async_generator_athrow without __name__>()>>  
