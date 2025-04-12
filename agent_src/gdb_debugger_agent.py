@@ -26,7 +26,7 @@ litellm.suppress_debug_info = True
 # --- Configuration ---
 LLAMA_STACK_URL = "http://localhost:8321"
 # Make sure this model is available on your Llama Stack server (local or via provider)
-DEFAULT_MODEL_ID = "groq/llama-3.1-8b-instant"
+DEFAULT_MODEL_ID = "meta-llama/llama-4-maverick-17b-128e-instruct"
 MAX_DEBUG_STEPS = 15 # Limit the number of interactions
 LOOP_DELAY_SECONDS = 5 # Delay between LLM calls to avoid rate limiting
 
@@ -361,7 +361,7 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
         if agent and history: # Check if agent was initialized and we have history
             console.print(Panel("Generating Final Summary via LLM", style="bold blue"))
             summary_prompt = f"Initial Bug Description: {bug_description}\n\n"
-            summary_prompt += "Based on the following GDB MI interaction history, please provide a concise summary.\n"
+            summary_prompt += "Based on the following GDB MI interaction history, please provide a summary.\n"
             summary_prompt += "Identify the likely root cause of the bug, the specific location (file:line or function if possible), and suggest a potential fix.\n\n"
             summary_prompt += "History:\n"
             # Include summarized history in the prompt
