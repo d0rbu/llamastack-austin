@@ -26,7 +26,7 @@ litellm.suppress_debug_info = True
 # --- Configuration ---
 LLAMA_STACK_URL = "http://localhost:8321"
 # Make sure this model is available on your Llama Stack server (local or via provider)
-DEFAULT_MODEL_ID = "meta-llama/llama-4-maverick-17b-128e-instruct"
+DEFAULT_MODEL_ID = "groq/llama-3.3-70b-versatile"
 MAX_DEBUG_STEPS = 15 # Limit the number of interactions
 LOOP_DELAY_SECONDS = 0 # Delay between LLM calls to avoid rate limiting
 
