@@ -1,7 +1,7 @@
 {
   "name": "autodebug",
-  "displayName": "autodebug",
-  "description": "uses llm to automatically debug",
+  "displayName": "GDBuddy",
+  "description": "GDBuddy is an AI-powered debugging assistant that integrates with GDB to automatically identify, analyze, and help fix bugs in C/C++ programs using a large language model.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.99.0"

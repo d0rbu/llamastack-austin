@@ -85,6 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
     
                     // Final updates after the stream has finished
                     autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, "Ready");
+                    vscode.commands.executeCommand('autodebug.showContentWebView', suggestionContent, 'Suggestions & Final Thoughts');
                     progress.report({ increment: 100, message: "Debugging complete!" });
                 } catch (err) {
                     vscode.window.showErrorMessage(`Debugging failed: ${err}`);
