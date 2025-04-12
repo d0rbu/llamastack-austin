@@ -65,9 +65,27 @@ function activate(context) {
         vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: `Debugging ${target}...` }, async () => {
             try {
                 const result = await backend.debugTarget(target);
-                autoDebugViewProvider.updateNodeContent("Full trace", result.trace);
-                autoDebugViewProvider.updateNodeContent("Chain of thought", result.cot);
-                autoDebugViewProvider.updateNodeContent("Code suggestions etc final thoughts", result.answer);
+                // autoDebugViewProvider.updateNodeContent(
+                //     "Full trace",
+                //     result.trace
+                // );
+                // autoDebugViewProvider.updateNodeContent(
+                //     "Chain of thought",
+                //     result.cot
+                // );
+                // autoDebugViewProvider.updateNodeContent(
+                //     "Code suggestions etc final thoughts",
+                //     result.answer
+                // );
+                const traceLines = (result.trace || "No trace received.").split('\n');
+                autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines` // Custom description
+                );
+                const cotLines = (result.cot || "No CoT received.").split('\n');
+                autoDebugViewProvider.setNodeContent("cot", cotLines, `${cotLines.length} reasoning steps` // Custom description
+                );
+                const suggestionLines = (result.answer || "No suggestions received.").split('\n');
+                autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, `${suggestionLines.length} suggestions/thoughts` // Custom description
+                );
             }
             catch (err) {
                 vscode.window.showErrorMessage(`Debugging failed: ${err}`);
