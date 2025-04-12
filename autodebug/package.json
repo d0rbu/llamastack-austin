@@ -25,7 +25,7 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "autodebug",
+          "id": "autodebug-activitybar",
           "title": "Auto Debug",
           "icon": "$(debug)"
         }
@@ -36,7 +36,8 @@
 				{
 					"id": "autodebugView",
 					"name": "Debugger Output",
-					"type": "tree"
+					"type": "tree",
+          "icon": "$(debug)"
 				}
 			]
     }
