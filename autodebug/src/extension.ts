@@ -29,56 +29,164 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    // const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
+    //     const backend = new BackendInterface(context);
+
+    //     vscode.window.withProgress(
+    //         { location: vscode.ProgressLocation.Notification, title: `Debugging ${target}...` },
+    //         async (progress, token) => {
+    //             try {
+	// 				progress.report({ increment: 0 });
+    //                 autoDebugViewProvider.clearAllNodes("Debugging in progress...");
+
+    //                 // Set initial descriptions indicating process start
+    //                 autoDebugViewProvider.updateNodeDescription("trace", "Running debug...");
+    //                 autoDebugViewProvider.updateNodeDescription("suggestions", "Running debug...");
+
+    //                 const result = await backend.debugTarget(target) as DebugResponse;
+
+    //                 // Process results
+	// 				const traceContent = result.trace || ""; // Default to empty string
+    //                 const suggestionContent = result.answer || "No suggestions received.";
+
+    //                 // Split trace into lines for individual tree items
+    //                 const traceLines = traceContent ? traceContent.split('\n') : []; // Handle empty trace
+
+    //                 // Set the individual trace lines first
+    //                 autoDebugViewProvider.setNodeContent(
+    //                     "trace",
+    //                     traceLines,
+    //                     traceLines.length > 0 ? `(${traceLines.length} lines)` : "(empty)"
+    //                 );
+
+    //                 // Now, add the final viewer button for the trace
+    //                 if (traceLines.length > 0) {
+    //                     autoDebugViewProvider.addFinalContentViewer("trace");
+    //                      // Optionally update description again after adding viewer
+    //                      autoDebugViewProvider.updateNodeDescription("trace", `(${traceLines.length} lines + Viewer)`);
+    //                 }
+
+    //                 // Set the Suggestions content (creates its viewer directly)
+    //                 autoDebugViewProvider.setNodeContent(
+    //                     "suggestions",
+    //                     suggestionContent,
+    //                     suggestionContent ? "Content available" : "(empty)"
+    //                 );
+
+    //                 progress.report({ increment: 100, message: "Debugging complete!" });
+    //             } catch (err) {
+    //                 vscode.window.showErrorMessage(`Debugging failed: ${err}`);
+    //             }
+    //         }
+    //     );
+    // });
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
-        const backend = new BackendInterface(context);
+        // --- Start Test Simulation ---
+        // Temporarily bypass the actual backend call for testing
+        // const backend = new BackendInterface(context);
 
         vscode.window.withProgress(
-            { location: vscode.ProgressLocation.Notification, title: `Debugging ${target}...` },
+            { location: vscode.ProgressLocation.Notification, title: `Simulating Debug for ${target}...` },
             async (progress, token) => {
                 try {
-					progress.report({ increment: 0 });
-                    autoDebugViewProvider.clearAllNodes("Debugging in progress...");
+					progress.report({ increment: 0, message: "Starting simulation..." });
+                    autoDebugViewProvider.clearAllNodes("Simulation in progress...");
 
-                    // Set initial descriptions indicating process start
-                    autoDebugViewProvider.updateNodeDescription("trace", "Running debug...");
-                    autoDebugViewProvider.updateNodeDescription("suggestions", "Running debug...");
+                    // Set initial descriptions
+                    autoDebugViewProvider.updateNodeDescription("trace", "Simulating trace...");
+                    autoDebugViewProvider.updateNodeDescription("suggestions", "Awaiting simulation...");
 
-                    const result = await backend.debugTarget(target) as DebugResponse;
+                    // 1. Simulate streaming trace lines
+                    const simulatedTraceLines = [
+                        "Starting process...",
+                        "Reading config file `/etc/app.conf`...",
+                        "Connecting to database `main_db`...",
+                        "Executing query `SELECT * FROM users WHERE id = 123;`...",
+                        "Processing results (found 1 record)...",
+                        "Error: Network timeout on service `auth_service`.",
+                        "Retrying connection...",
+                        "Failed to connect after 3 retries.",
+                        "Exiting process with error code 5."
+                    ];
 
-                    // Process results
-					const traceContent = result.trace || ""; // Default to empty string
-                    const suggestionContent = result.answer || "No suggestions received.";
+                    // Clear existing trace content before starting append simulation
+                    autoDebugViewProvider.clearNodeContent("trace", "Simulating lines...");
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Short delay
 
-                    // Split trace into lines for individual tree items
-                    const traceLines = traceContent ? traceContent.split('\n') : []; // Handle empty trace
-
-                    // Set the individual trace lines first
-                    autoDebugViewProvider.setNodeContent(
-                        "trace",
-                        traceLines,
-                        traceLines.length > 0 ? `(${traceLines.length} lines)` : "(empty)"
-                    );
-
-                    // Now, add the final viewer button for the trace
-                    if (traceLines.length > 0) {
-                        autoDebugViewProvider.addFinalContentViewer("trace");
-                         // Optionally update description again after adding viewer
-                         autoDebugViewProvider.updateNodeDescription("trace", `(${traceLines.length} lines + Viewer)`);
+                    for (let i = 0; i < simulatedTraceLines.length; i++) {
+                        if (token.isCancellationRequested) {
+                             vscode.window.showInformationMessage("Simulation cancelled.");
+                             autoDebugViewProvider.clearAllNodes("Simulation cancelled.");
+                             return;
+                        }
+                        const line = simulatedTraceLines[i];
+                        autoDebugViewProvider.appendNodeContentLine("trace", line);
+                        progress.report({ increment: (1 / (simulatedTraceLines.length + 2)) * 100 , message: `Trace line ${i+1}` }); // Adjust progress incrementally
+                        await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay between lines
                     }
 
-                    // Set the Suggestions content (creates its viewer directly)
+                    // 2. Add the final trace viewer
+                    autoDebugViewProvider.addFinalContentViewer("trace");
+                    autoDebugViewProvider.updateNodeDescription("trace", `(${simulatedTraceLines.length} lines + Viewer)`);
+                    progress.report({ increment: (1 / (simulatedTraceLines.length + 2)) * 100, message: "Trace viewer added." });
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Delay before showing suggestions
+
+                    // 3. Simulate suggestions content
+                    const simulatedSuggestions = `## Analysis
+
+The trace indicates a **network timeout** when trying to reach the \`auth_service\`. This happened after successfully connecting to the database and processing a query.
+
+**Possible Causes:**
+
+*   **Network Issue:** Firewall blocking the connection, DNS resolution failure, or general network instability between the application server and the auth service.
+*   **Auth Service Down:** The \`auth_service\` itself might be unavailable or overloaded.
+*   **Incorrect Configuration:** The application might have an incorrect address or port configured for the \`auth_service\`.
+
+**Recommendations:**
+
+1.  **Check Network Connectivity:** Verify network path and firewall rules between the application host and the \`auth_service\` host. Use tools like \`ping\` or \`traceroute\`.
+2.  **Verify Auth Service Status:** Check if the \`auth_service\` is running and responsive. Look at its logs for any errors.
+3.  **Review Configuration:** Double-check the configuration files (\`e.g., /etc/app.conf\`) for the correct address/hostname and port for \`auth_service\`.
+4.  **Implement Retry Logic (with backoff):** While retries were attempted, consider implementing exponential backoff to avoid overwhelming the service if it's temporarily overloaded.
+
+\`\`\`typescript
+// Example retry logic
+async function connectWithRetry(attempt = 1) {
+  const MAX_RETRIES = 5;
+  const INITIAL_DELAY = 500; // ms
+  try {
+    await connectToAuthService();
+    console.log("Connected successfully!");
+  } catch (error) {
+    if (attempt <= MAX_RETRIES) {
+      const delay = INITIAL_DELAY * Math.pow(2, attempt - 1);
+      console.warn(\`Connection attempt \${attempt} failed. Retrying in \${delay}ms...\`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      await connectWithRetry(attempt + 1);
+    } else {
+      console.error("Max retries reached. Could not connect.");
+      throw error; // Re-throw final error
+    }
+  }
+}
+\`\`\`
+`;
                     autoDebugViewProvider.setNodeContent(
                         "suggestions",
-                        suggestionContent,
-                        suggestionContent ? "Content available" : "(empty)"
+                        simulatedSuggestions,
+                        "Suggestions ready"
                     );
+                    progress.report({ increment: (1 / (simulatedTraceLines.length + 2)) * 100, message: "Suggestions ready." });
 
-                    progress.report({ increment: 100, message: "Debugging complete!" });
-                } catch (err) {
-                    vscode.window.showErrorMessage(`Debugging failed: ${err}`);
+
+                    progress.report({ increment: 100, message: "Simulation complete!" });
+                } catch (err: any) { // Added type annotation
+                    vscode.window.showErrorMessage(`Simulation failed: ${err?.message || err}`);
+                    autoDebugViewProvider.clearAllNodes("Simulation failed.");
                 }
             }
         );
+        // --- End Test Simulation ---
     });
 
 	const showContentWebViewCommand = vscode.commands.registerCommand('autodebug.showContentWebView', (content: string, title: string) => {
