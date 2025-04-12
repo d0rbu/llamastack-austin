@@ -53,19 +53,19 @@ function activate(context) {
     });
     context.subscriptions.push(disposable);
     let startDebuggingCommand = vscode.commands.registerCommand('autodebug.startDebugging', async () => {
-        const relativeMakefilePath = 'sample/Makefile';
+        const relativeMakefilePath = 'agent_src/test_executables/Makefile';
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
             vscode.window.showErrorMessage('No workspace folder open. Please open the directory containing "autodebug" and "sample".');
             return;
         }
+        autoDebugViewProvider.updateNodeContent("Full trace", `Debugging started with: ${path.basename(relativeMakefilePath)}`);
         const workspaceRootUri = workspaceFolders[0].uri;
         const makefileUri = vscode.Uri.joinPath(workspaceRootUri, relativeMakefilePath);
         const makefilePath = makefileUri.fsPath;
         vscode.window.showInformationMessage(`Using Makefile: ${makefilePath}`);
         console.log(`Using Makefile path: ${makefilePath}`);
         // Update the view when debugging starts
-        autoDebugViewProvider.updateView(`Starting debugging with: ${path.basename(makefilePath)}`);
         // TODO: Send this path to the LLM backend
         // TODO: Open a view (e.g., Webview) to display streaming output -> Now use autoDebugViewProvider.appendContent()
     });
