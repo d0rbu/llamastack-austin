@@ -28,113 +28,96 @@ export function activate(context: vscode.ExtensionContext) {
             await targetPickerProvider.loadTargets(uri[0].fsPath);
         }
     });
-
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
         const backend = new BackendInterface(context);
-
+        
+        const bugDescription = await vscode.window.showInputBox({
+            prompt: 'Describe the bug or unexpected behavior you are encountering.',
+            placeHolder: 'e.g., segfault when input is empty'
+        });
+    
+        if (!bugDescription) {
+            vscode.window.showWarningMessage('Debugging canceled: no bug description provided.');
+            return;
+        }
+    
         vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: `Debugging ${target}...` },
             async (progress, token) => {
                 try {
-                    // progress.report({ increment: 0 });
-
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "trace",
-                    //     [],
-                    //     "Debugging"
-                    // );
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "cot",
-                    //     [],
-                    //     "Waiting to finish debugging"
-                    // );
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "suggestions",
-                    //     [],
-                    //     "Waiting to finish debugging"
-                    // );
-                    // const result = await backend.debugTarget(target) as DebugResponse;
-
-                    // // wait 5 seconds
-                    // await new Promise(resolve => setTimeout(resolve, 5000));
-
-					// const traceLines = (result.trace || "No trace received.").split('\n');
-					// const cotLines = (result.cot || "No CoT received.").split('\n');
-                    // const suggestionLines = (result.answer || "No suggestions received.").split('\n');
-                    
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "trace",
-                    //     traceLines,
-                    //     `${traceLines.length} trace lines`
-                    // );
-
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "cot",
-                    //     cotLines,
-                    //     `${cotLines.length} reasoning steps`
-                    // );
-
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "suggestions",
-                    //     suggestionLines,
-                    //     "Ready"
-                    // )
-
-                    // progress.report({ increment: 100, message: "Debugging complete!" });
-					progress.report({ increment: 0 });
-                    autoDebugViewProvider.clearAllNodes("Debugging in progress...");
-
-                    // Set initial descriptions indicating process start
-                    autoDebugViewProvider.updateNodeDescription("trace", "Running debug...");
-                    autoDebugViewProvider.updateNodeDescription("cot", "Running debug...");
-                    autoDebugViewProvider.updateNodeDescription("suggestions", "Running debug...");
-
-                    const result = await backend.debugTarget(target) as DebugResponse;
-
-                    // Process results
-					const traceContent = result.trace || ""; // Default to empty string
-					const cotContent = result.cot || "No CoT received.";
-                    const suggestionContent = result.answer || "No suggestions received.";
-
-                    // Split trace into lines for individual tree items
-                    const traceLines = traceContent ? traceContent.split('\n') : []; // Handle empty trace
-
-                    // Set the individual trace lines first
-                    autoDebugViewProvider.setNodeContent(
-                        "trace",
-                        traceLines,
-                        traceLines.length > 0 ? `(${traceLines.length} lines)` : "(empty)"
-                    );
-
-                    // Now, add the final viewer button for the trace
-                    if (traceLines.length > 0) {
-                        autoDebugViewProvider.addFinalContentViewer("trace");
-                         // Optionally update description again after adding viewer
-                         autoDebugViewProvider.updateNodeDescription("trace", `(${traceLines.length} lines + Viewer)`);
+                    progress.report({ increment: 0 });
+    
+                    // Initialize the node content
+                    autoDebugViewProvider.setNodeContent("trace", [], "Debugging");
+                    autoDebugViewProvider.setNodeContent("cot", [], "Waiting to finish debugging");
+                    autoDebugViewProvider.setNodeContent("suggestions", [], "Waiting to finish debugging");
+    
+                    // Buffers for the incoming streams
+                    const traceLines: string[] = [];
+                    const cotLines: string[] = [];
+                    const suggestionLines: string[] = [];
+    
+                    // Track the current stream state
+                    let currentSection: 'trace' | 'cot' | 'answer' = 'trace';
+    
+                    // Call the backend method to start debugging and get the stream
+                    const debugStream = backend.debugTarget(target, bugDescription);
+    
+                    // Iterate over the async generator to process each DebugResponse
+                    for await (const result of debugStream) {
+                        if (result.type === 'trace') {
+                            // If we're already in the trace section, continue adding lines
+                            if (currentSection === 'trace') {
+                                traceLines.push(result.content);
+                                autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
+                            }
+                        } else if (result.type === 'cot') {
+                            // When switching to 'cot', finish the trace section and display it in the webview
+                            if (currentSection === 'trace') {
+                                currentSection = 'cot';  // Switch to cot section
+                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
+                                // Display trace in webview as markdown
+                                const traceContent = traceLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
+                                progress.report({ increment: 33, message: "Trace complete!" });
+                            }
+    
+                            cotLines.push(result.content);
+                            autoDebugViewProvider.setNodeContent("cot", cotLines, `${cotLines.length} reasoning steps`);
+                        } else if (result.type === 'answer') {
+                            // Once we hit 'answer', finish the cot section and display it in the webview
+                            if (currentSection === 'cot') {
+                                currentSection = 'answer';  // Switch to answer section
+                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
+                                // Display cot in webview as markdown
+                                const cotContent = cotLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', cotContent, 'Chain of Thought');
+                                progress.report({ increment: 66, message: "Reasoning complete!" });
+                            } else if (currentSection === 'trace') {
+                                currentSection = 'answer';  // Switch to answer section
+                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
+                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
+                                // Display trace in webview as markdown
+                                const traceContent = traceLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
+                                progress.report({ increment: 50, message: "Trace complete!" });
+                            }
+    
+                            suggestionLines.push(result.content);
+                            autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Compiling suggestions");
+                        }
                     }
-
-
-                    // Set the CoT content (creates its viewer directly)
-                    autoDebugViewProvider.setNodeContent(
-                        "cot",
-                        cotContent,
-                        cotContent ? "Content available" : "(empty)"
-                    );
-
-                    // Set the Suggestions content (creates its viewer directly)
-                    autoDebugViewProvider.setNodeContent(
-                        "suggestions",
-                        suggestionContent,
-                        suggestionContent ? "Content available" : "(empty)"
-                    );
-
+    
+                    // Final updates after the stream has finished
+                    autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Ready");
                     progress.report({ increment: 100, message: "Debugging complete!" });
+    
                 } catch (err) {
                     vscode.window.showErrorMessage(`Debugging failed: ${err}`);
                 }
             }
         );
-    });
+    });     
 
 	const showContentWebViewCommand = vscode.commands.registerCommand('autodebug.showContentWebView', (content: string, title: string) => {
         // Create and show a new webview panel

@@ -20,14 +20,8 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
     readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     // Store the root items for the tree view
-    // private rootItems: DebugTreeItemData[] = [
-    //     { label: "Full trace", content: "Trace details will appear here...", children: [] },
-    //     { label: "Chain of thought", content: "LLM reasoning steps will appear here...", children: [] },
-    //     { label: "Code suggestions etc final thoughts", content: "Suggestions and conclusions will appear here...", children: [] }
-    // ];
     private rootItems: DebugTreeItemData[] = [
         { id: "trace", label: "Full trace", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('list-unordered') },
-        { id: "cot", label: "Chain of thought", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('comment-discussion') },
         { id: "suggestions", label: "Code suggestions etc final thoughts", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('issues') }
     ];
 
@@ -48,7 +42,7 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
         item.iconPath = data.icon;
         item.description = data.description;
         item.command = data.command;
-       
+
         if (!data.isCategory) {
             // For regular trace lines
             if (!item.command) { // Don't override formatting for command items
@@ -124,73 +118,63 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
         }
 
         if (nodeId === 'trace') {
-             // Set trace lines as individual children
-             if (!Array.isArray(content)) {
-                 console.warn(`Invalid content type for trace node in setNodeContent. Expected string[].`);
-                 node.children = [];
-                 node.description = description ?? "(Invalid content)";
-                 this._onDidChangeTreeData.fire();
-                 return;
-             }
-             node.children = content.map((line: string) => {
-                 const childId = `${nodeId}_content_${this.contentCounter++}`;
-                 // Ensure trace lines have no command associated here
-                 return {
-                     id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
-                 };
-             });
-             node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
-             // DO NOT add the final viewer here, use addFinalContentViewer for that
-
-        } else if (nodeId === 'cot' || nodeId === 'suggestions') {
-            // Handle CoT and Suggestions as single markdown string displayed via webview
-             if (typeof content !== 'string') {
-                 console.warn(`Invalid content type for ${nodeId} node. Expected string.`);
-                 node.children = [];
-                 node.description = description ?? "(Invalid content)";
-                 this._onDidChangeTreeData.fire();
-                 return;
+            // Handle trace lines as individual children
+            if (!Array.isArray(content)) {
+                console.warn(`Invalid content type for trace node in setNodeContent. Expected string[].`);
+                node.children = [];
+                node.description = description ?? "(Invalid content)";
+                this._onDidChangeTreeData.fire();
+                return;
             }
+            node.children = content.map((line: string) => {
+                const childId = `${nodeId}_content_${this.contentCounter++}`;
+                return {
+                    id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
+                };
+            });
+            node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
 
-             const childId = `${nodeId}_content_${this.contentCounter++}`;
-             const fullMarkdown = content;
-             let childLabel = "View Content";
-             let viewTitle = "Content";
-              if (nodeId === 'cot') {
-                 childLabel = "View Chain of Thought";
-                 viewTitle = "Chain of Thought";
-              }
-              if (nodeId === 'suggestions') {
-                 childLabel = "View Suggestions";
-                 viewTitle = "Suggestions & Final Thoughts";
-              }
+        } else if (nodeId === 'suggestions') { // Simplified condition, only handles suggestions now
+           // Handle Suggestions as single markdown string displayed via webview
+            if (typeof content !== 'string') {
+                console.warn(`Invalid content type for ${nodeId} node. Expected string.`);
+                node.children = [];
+                node.description = description ?? "(Invalid content)";
+                this._onDidChangeTreeData.fire();
+                return;
+           }
 
-             // Directly set the single child viewer for CoT/Suggestions
-             node.children = [{
-                  id: childId,
-                  label: childLabel,
-                  content: fullMarkdown,
-                  children: [],
-                  isCategory: false,
-                  command: {
-                      command: 'autodebug.showContentWebView',
-                      title: `Show ${childLabel}`,
-                      arguments: [fullMarkdown, viewTitle]
-                  }
-             }];
-             node.description = description ?? (content ? "(Content available)" : "(empty)");
+            const childId = `${nodeId}_content_${this.contentCounter++}`;
+            const fullMarkdown = content;
+            // Specific labels/titles for suggestions
+            const childLabel = "View Suggestions";
+            const viewTitle = "Suggestions & Final Thoughts";
+
+            node.children = [{
+                 id: childId,
+                 label: childLabel,
+                 content: fullMarkdown,
+                 children: [],
+                 isCategory: false,
+                 command: {
+                     command: 'autodebug.showContentWebView',
+                     title: `Show ${childLabel}`,
+                     arguments: [fullMarkdown, viewTitle]
+                 }
+            }];
+            node.description = description ?? (content ? "(Content available)" : "(empty)");
 
         } else {
-             console.warn(`Unknown nodeId for setNodeContent: ${nodeId}`);
-             node.children = [];
-             node.description = description ?? "(Unknown node type)";
+            console.warn(`Unknown or unsupported nodeId for setNodeContent: ${nodeId}`);
+            node.children = [];
+            node.description = description ?? "(Unknown node type)";
         }
 
         this._onDidChangeTreeData.fire();
     }
 
     public appendNodeContentLine(nodeId: string, newTextLine: string, updateDescription: boolean = true) {
-        if (nodeId === 'cot' || nodeId === 'suggestions') {
+        if (nodeId === 'suggestions') {
             console.warn(`Appending lines directly is not standard for node '${nodeId}'. Use setNodeContent.`);
             return;
         }
@@ -256,16 +240,10 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
 
         // Create the viewer button data
         const viewerButton: DebugTreeItemData = {
-            id: childId,
-            label: childLabel,
-            content: fullTraceContent, // Store full content for tooltip/command
-            children: [],
-            isCategory: false,
-            icon: new vscode.ThemeIcon('go-to-file'), // Explicitly set viewer icon
+            id: childId, label: childLabel, content: fullTraceContent, children: [], isCategory: false,
+            icon: new vscode.ThemeIcon('go-to-file'),
             command: {
-                command: 'autodebug.showContentWebView',
-                title: `Show ${childLabel}`,
-                arguments: [fullTraceContent, viewTitle]
+                command: 'autodebug.showContentWebView', title: `Show ${childLabel}`, arguments: [fullTraceContent, viewTitle]
             }
         };
 
