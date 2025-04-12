@@ -6,6 +6,7 @@ import sys
 import threading
 from pydantic import BaseModel
 from typing import Optional
+import json
 
 # Import your existing main() from gdb_debugger_agent.py.
 # Make sure that file is on your PYTHONPATH.
@@ -84,22 +85,23 @@ async def debug_target(request: DebugRequest):
 
     async def event_generator():
         """
-        Async generator that yields output chunks until the delimiter is encountered.
-        It assumes the delimiter ("========================================") is printed in one chunk.
+        Async generator that yields JSON-formatted trace chunks until the delimiter is hit.
+        Each yield is: {"type": "trace", "content": "..."}
         """
         while True:
             chunk = await queue.get()
             if chunk == "__END__":
                 break
             if "========================================" in chunk:
-                # If the delimiter appears in this chunk, yield only the part before it and finish.
                 idx = chunk.find("========================================")
-                yield chunk[:idx]
+                trace_part = chunk[:idx]
+                if trace_part.strip():
+                    yield json.dumps({"type": "trace", "content": trace_part}) + "\n"
                 break
-            else:
-                yield chunk
+            if chunk.strip():
+                yield json.dumps({"type": "trace", "content": chunk}) + "\n"
 
-    return StreamingResponse(event_generator(), media_type="text/plain")
+    return StreamingResponse(event_generator(), media_type="application/json")
 
 @app.get("/get_summary")
 async def get_summary():
