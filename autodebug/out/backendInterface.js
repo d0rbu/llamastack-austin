@@ -35,7 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BackendInterface = void 0;
 const vscode = __importStar(require("vscode"));
-const fetch = require('node-fetch');
+let fetch;
+(async () => {
+    fetch = (await import('node-fetch')).default;
+})();
 const BACKEND_URL = 'http://localhost:8000';
 class BackendInterface {
     context;
@@ -93,12 +96,7 @@ class BackendInterface {
      */
     async mockDebugTarget(target) {
         return {
-            trace: [
-                `Invoking build for ${target}`,
-                `Compiling source...`,
-                `Linking objects...`,
-                `Build successful.`
-            ],
+            trace: `Debugging target '${target}'...`,
             cot: `We began by building the target '${target}'. Compilation and linking succeeded with no errors.`,
             answer: `Build succeeded for target: ${target}`
         };

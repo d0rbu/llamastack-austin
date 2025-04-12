@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
-const fetch = require('node-fetch');
-
+let fetch: any;
+(async () => {
+    fetch = (await import('node-fetch')).default;
+})();
 const BACKEND_URL = 'http://localhost:8000';
 
 export interface DebugResponse {
-    trace: string[];
+    trace: string;
     cot: string;
     answer: string;
 }
@@ -30,7 +32,7 @@ export class BackendInterface {
                 throw new Error(`Failed to analyze Makefile: ${res.statusText}`);
             }
 
-            const data = await res.json();
+            const data = await res.json() as { targets: string[] };
             return data.targets || [];
         } catch (err) {
             vscode.window.showErrorMessage(`Error fetching build targets: ${err}`);
@@ -55,7 +57,7 @@ export class BackendInterface {
                 throw new Error(`Failed to debug target: ${res.statusText}`);
             }
 
-            const data: DebugResponse = await res.json();
+            const data = await res.json() as DebugResponse;
             return data;
         } catch (err) {
             vscode.window.showErrorMessage(`Error debugging target: ${err}`);
@@ -68,12 +70,7 @@ export class BackendInterface {
      */
     async mockDebugTarget(target: string): Promise<DebugResponse> {
         return {
-            trace: [
-                `Invoking build for ${target}`,
-                `Compiling source...`,
-                `Linking objects...`,
-                `Build successful.`
-            ],
+            trace: `Debugging target '${target}'...`,
             cot: `We began by building the target '${target}'. Compilation and linking succeeded with no errors.`,
             answer: `Build succeeded for target: ${target}`
         };
