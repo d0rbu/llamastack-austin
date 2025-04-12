@@ -72,7 +72,7 @@ export function activate(context: vscode.ExtensionContext) {
                             // Once we hit 'answer', finish the cot section and display it in the webview
                             if (currentSection === 'trace') {
                                 currentSection = 'answer';  // Switch to answer section
-                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
+                                autoDebugViewProvider.setNodeContent("trace", traceLines.concat(["SHOW_TRACE_BUTTON"]), "Click to view trace");
                                 // Display trace in webview as markdown
                                 const traceContent = traceLines.join('\n');
                                 vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
@@ -85,7 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
                     }
     
                     // Final updates after the stream has finished
-                    autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, "Ready");
+                    autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, "Click to view suggestions");
                     vscode.commands.executeCommand('autodebug.showContentWebView', suggestionContent, 'Suggestions & Final Thoughts');
                     progress.report({ increment: 100, message: "Debugging complete!" });
                 } catch (err) {

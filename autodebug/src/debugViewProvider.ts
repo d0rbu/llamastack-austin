@@ -125,18 +125,40 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
                 node.description = description ?? "(Invalid content)";
                 needsRefresh = true;
             } else {
-                 const previousChildCount = node.children.length;
-                 node.children = content.map((line: string) => {
-                     const childId = `${nodeId}_content_${this.contentCounter++}`;
-                     return {
-                         id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
-                     };
-                 });
-                 node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
-                 // Refresh if children changed or description changed
-                 needsRefresh = node.children.length !== previousChildCount || node.description !== description;
-                 // Important: Remove any final viewer button added previously if we're resetting content
-                 this.removeFinalContentViewer(nodeId); // Add helper or inline logic
+                if (content.slice(-1)[0] == "SHOW_TRACE_BUTTON") {
+                    // instead of showing the trace lines as children, make it a command to show the full trace in a webview
+
+                    const fullTraceContent = content.slice(0, -1).join('\n'); // Join all but the last line for the full content
+                    const viewTitle = "Trace"
+                    const newCommand: vscode.Command = {
+                        command: 'autodebug.showContentWebView',
+                        title: 'Trace', // Tooltip for the command itself
+                        arguments: [fullTraceContent, viewTitle] // Join all but the last line for the content
+                    };
+                    const newDescription = description ?? (content ? "(Click to view)" : "(empty)");
+
+                    // Check if update is actually needed
+                    if (node.fullContent !== fullTraceContent || node.description !== newDescription || JSON.stringify(node.command) !== JSON.stringify(newCommand)) {
+                        node.fullContent = fullTraceContent; // Store full content
+                        node.command = newCommand; // Assign command directly to the root item
+                        node.children = []; // Ensure no children
+                        node.description = newDescription;
+                        needsRefresh = true;
+                    }
+                } else {
+                    const previousChildCount = node.children.length;
+                    node.children = content.map((line: string) => {
+                        const childId = `${nodeId}_content_${this.contentCounter++}`;
+                        return {
+                            id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
+                        };
+                    });
+                    node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
+                    // Refresh if children changed or description changed
+                    needsRefresh = node.children.length !== previousChildCount || node.description !== description;
+                    // Important: Remove any final viewer button added previously if we're resetting content
+                    this.removeFinalContentViewer(nodeId); // Add helper or inline logic
+                }
             }
 
         } else if (nodeId === 'suggestions') {
