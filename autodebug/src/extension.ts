@@ -1,49 +1,42 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { AutoDebugViewProvider } from './debugViewProvider';
+import { TargetPickerViewProvider } from './targetPickerViewProvider';
+import * as path from 'path';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	const autoDebugViewProvider = new AutoDebugViewProvider(context);
-	vscode.window.registerTreeDataProvider('autodebugView', autoDebugViewProvider);
-
+    const autoDebugViewProvider = new AutoDebugViewProvider(context);
+    vscode.window.registerTreeDataProvider('autodebugView', autoDebugViewProvider);
     vscode.window.createTreeView('autodebugView', {
         treeDataProvider: autoDebugViewProvider,
     });
 
-	let disposable = vscode.commands.registerCommand('autodebug.helloWorld', () => {
-		vscode.window.showInformationMessage('Hello World from autodebug!');
-	});
-	context.subscriptions.push(disposable);
+    const targetPickerProvider = new TargetPickerViewProvider(context);
+    vscode.window.registerTreeDataProvider('targetPickerView', targetPickerProvider);
+    vscode.window.createTreeView('targetPickerView', {
+        treeDataProvider: targetPickerProvider,
+    });
 
-	let startDebuggingCommand = vscode.commands.registerCommand('autodebug.startDebugging', async () => {
-		const relativeMakefilePath = 'agent_src/test_executables/Makefile';
-		const workspaceFolders = vscode.workspace.workspaceFolders;
-		if (!workspaceFolders || workspaceFolders.length === 0) {
-			vscode.window.showErrorMessage('No workspace folder open. Please open the directory containing "autodebug" and "sample".');
-			return;
-		}
-		autoDebugViewProvider.updateNodeContent("Full trace", `Debugging started with: ${path.basename(relativeMakefilePath)}`);
+    const selectMakefileCommand = vscode.commands.registerCommand('autodebug.selectMakefile', async () => {
+        const uri = await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            filters: { 'Makefiles': ['mk', 'makefile', 'Makefile'] },
+            openLabel: 'Select Makefile'
+        });
 
-		const workspaceRootUri = workspaceFolders[0].uri;
-		const makefileUri = vscode.Uri.joinPath(workspaceRootUri, relativeMakefilePath);
-		const makefilePath = makefileUri.fsPath;
+        if (uri && uri[0]) {
+            await targetPickerProvider.loadTargets(uri[0].fsPath);
+        }
+    });
 
-		vscode.window.showInformationMessage(`Using Makefile: ${makefilePath}`);
-		console.log(`Using Makefile path: ${makefilePath}`);
+    const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
+        vscode.window.showInformationMessage(`Debugging target: ${target}`);
+        // You can trigger actual debugging here
+    });
 
-		// Update the view when debugging starts
-
-		// TODO: Send this path to the LLM backend
-		// TODO: Open a view (e.g., Webview) to display streaming output -> Now use autoDebugViewProvider.appendContent()
-
-	});
-
-	context.subscriptions.push(startDebuggingCommand);
+    context.subscriptions.push(
+        selectMakefileCommand,
+        debugTargetCommand
+    );
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
