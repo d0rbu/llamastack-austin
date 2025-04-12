@@ -101,16 +101,14 @@ export function activate(context: vscode.ExtensionContext) {
     
                     // Initialize the node content
                     autoDebugViewProvider.setNodeContent("trace", [], "Debugging");
-                    autoDebugViewProvider.setNodeContent("cot", [], "Waiting to finish debugging");
                     autoDebugViewProvider.setNodeContent("suggestions", [], "Waiting to finish debugging");
     
                     // Buffers for the incoming streams
                     const traceLines: string[] = [];
-                    const cotLines: string[] = [];
-                    const suggestionLines: string[] = [];
+                    let suggestionContent = "";
     
                     // Track the current stream state
-                    let currentSection: 'trace' | 'cot' | 'answer' = 'trace';
+                    let currentSection: 'trace' | 'answer' = 'trace';
     
                     // Call the backend method to start debugging and get the stream
                     const debugStream = backend.debugTarget(target, bugDescription);
@@ -123,29 +121,9 @@ export function activate(context: vscode.ExtensionContext) {
                                 traceLines.push(result.content);
                                 autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
                             }
-                        } else if (result.type === 'cot') {
-                            // When switching to 'cot', finish the trace section and display it in the webview
-                            if (currentSection === 'trace') {
-                                currentSection = 'cot';  // Switch to cot section
-                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
-                                // Display trace in webview as markdown
-                                const traceContent = traceLines.join('\n');
-                                vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
-                                progress.report({ increment: 33, message: "Trace complete!" });
-                            }
-    
-                            cotLines.push(result.content);
-                            autoDebugViewProvider.setNodeContent("cot", cotLines, `${cotLines.length} reasoning steps`);
                         } else if (result.type === 'answer') {
                             // Once we hit 'answer', finish the cot section and display it in the webview
-                            if (currentSection === 'cot') {
-                                currentSection = 'answer';  // Switch to answer section
-                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
-                                // Display cot in webview as markdown
-                                const cotContent = cotLines.join('\n');
-                                vscode.commands.executeCommand('autodebug.showContentWebView', cotContent, 'Chain of Thought');
-                                progress.report({ increment: 66, message: "Reasoning complete!" });
-                            } else if (currentSection === 'trace') {
+                            if (currentSection === 'trace') {
                                 currentSection = 'answer';  // Switch to answer section
                                 autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
                                 autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
@@ -155,13 +133,13 @@ export function activate(context: vscode.ExtensionContext) {
                                 progress.report({ increment: 50, message: "Trace complete!" });
                             }
     
-                            suggestionLines.push(result.content);
-                            autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Compiling suggestions");
+                            
+                            autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, "Compiling suggestions");
                         }
                     }
     
                     // Final updates after the stream has finished
-                    autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Ready");
+                    autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, "Ready");
                     progress.report({ increment: 100, message: "Debugging complete!" });
     
                 } catch (err) {
