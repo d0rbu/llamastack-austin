@@ -79,9 +79,13 @@ export class BackendInterface {
      */
     async mockDebugTarget(target: string): Promise<DebugResponse> {
         return {
-            trace: `Debugging target '${target}'...`,
-            cot: `We began by building the target '${target}'. Compilation and linking succeeded with no errors.`,
-            answer: `Build succeeded for target: ${target}`
+            trace: `'${target}' running on gdb\n\n` +
+                `Breakpoint 1, main () at main.c:10\n` +
+                `10\tint main() {\n` +
+                `11\t\tprintf("Hello, World!");\n` +
+                `12\t}\n`,
+            cot: `We began by building the target '${target}'.\nCompilation and linking succeeded with no errors.`,
+            answer: `The issue with the target '${target}' was due to a missing header file.`
         };
     }
 

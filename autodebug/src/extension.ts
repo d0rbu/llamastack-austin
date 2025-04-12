@@ -20,7 +20,6 @@ export function activate(context: vscode.ExtensionContext) {
     const selectMakefileCommand = vscode.commands.registerCommand('autodebug.selectMakefile', async () => {
         const uri = await vscode.window.showOpenDialog({
             canSelectMany: false,
-            filters: { 'Makefiles': ['mk', 'makefile', 'Makefile'] },
             openLabel: 'Select Makefile'
         });
 
@@ -33,48 +32,59 @@ export function activate(context: vscode.ExtensionContext) {
         const backend = new BackendInterface(context);
 
         vscode.window.withProgress(
-            { location: vscode.ProgressLocation.Window, title: `Debugging ${target}...` },
-            async () => {
+            { location: vscode.ProgressLocation.Notification, title: `Debugging ${target}...` },
+            async (progress, token) => {
                 try {
+                    progress.report({ increment: 0 });
+
+                    autoDebugViewProvider.setNodeContent(
+                        "trace",
+                        [],
+                        "Debugging"
+                    );
+                    autoDebugViewProvider.setNodeContent(
+                        "cot",
+                        [],
+                        "Waiting to finish debugging"
+                    );
+                    autoDebugViewProvider.setNodeContent(
+                        "suggestions",
+                        [],
+                        "Waiting to finish debugging"
+                    );
                     const result = await backend.debugTarget(target) as DebugResponse;
-                    // autoDebugViewProvider.updateNodeContent(
-                    //     "Full trace",
-                    //     result.trace
-                    // );
-                    // autoDebugViewProvider.updateNodeContent(
-                    //     "Chain of thought",
-                    //     result.cot
-                    // );
-                    // autoDebugViewProvider.updateNodeContent(
-                    //     "Code suggestions etc final thoughts",
-                    //     result.answer
-                    // );
+
+                    // wait 5 seconds
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+
 					const traceLines = (result.trace || "No trace received.").split('\n');
+					const cotLines = (result.cot || "No CoT received.").split('\n');
+                    const suggestionLines = (result.answer || "No suggestions received.").split('\n');
+                    
                     autoDebugViewProvider.setNodeContent(
                         "trace",
                         traceLines,
-                        `${traceLines.length} trace lines` // Custom description
+                        `${traceLines.length} trace lines`
                     );
 
-					const cotLines = (result.cot || "No CoT received.").split('\n');
-                     autoDebugViewProvider.setNodeContent(
+                    autoDebugViewProvider.setNodeContent(
                         "cot",
                         cotLines,
-                         `${cotLines.length} reasoning steps` // Custom description
+                        `${cotLines.length} reasoning steps`
                     );
 
-					const suggestionLines = (result.answer || "No suggestions received.").split('\n');
                     autoDebugViewProvider.setNodeContent(
                         "suggestions",
                         suggestionLines,
-                         `${suggestionLines.length} suggestions/thoughts` // Custom description
-                    );
+                        "Ready"
+                    )
+
+                    progress.report({ increment: 100, message: "Debugging complete!" });
                 } catch (err) {
                     vscode.window.showErrorMessage(`Debugging failed: ${err}`);
                 }
             }
         );
-        vscode.window.showInformationMessage(`Debugging target: ${target}`);
     });
 
     context.subscriptions.push(

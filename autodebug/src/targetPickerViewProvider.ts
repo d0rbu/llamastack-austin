@@ -24,6 +24,8 @@ export class TargetPickerViewProvider implements vscode.TreeDataProvider<vscode.
                 title: 'Debug Target',
                 arguments: [t]
             };
+            item.tooltip = `Run debug target: ${t}`;
+            item.iconPath = new vscode.ThemeIcon('debug-start');
             return item;
         });
 

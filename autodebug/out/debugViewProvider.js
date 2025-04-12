@@ -40,11 +40,6 @@ class AutoDebugViewProvider {
     _onDidChangeTreeData = new vscode.EventEmitter();
     onDidChangeTreeData = this._onDidChangeTreeData.event;
     // Store the root items for the tree view
-    // private rootItems: DebugTreeItemData[] = [
-    //     { label: "Full trace", content: "Trace details will appear here...", children: [] },
-    //     { label: "Chain of thought", content: "LLM reasoning steps will appear here...", children: [] },
-    //     { label: "Code suggestions etc final thoughts", content: "Suggestions and conclusions will appear here...", children: [] }
-    // ];
     rootItems = [
         { id: "trace", label: "Full trace", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('list-unordered') },
         { id: "cot", label: "Chain of thought", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('comment-discussion') },
@@ -64,27 +59,12 @@ class AutoDebugViewProvider {
         item.tooltip = data.content || data.label; // Tooltip can still show full content if needed
         item.iconPath = data.icon;
         item.description = data.description;
-        // switch (data.label) {
-        //     case "Full trace":
-        //         item.iconPath = new vscode.ThemeIcon('list-unordered'); // Or 'checklist', 'references'
-        //         break;
-        //     case "Chain of thought":
-        //         item.iconPath = new vscode.ThemeIcon('comment-discussion'); // Or 'hubot', 'lightbulb'
-        //         break;
-        //     case "Code suggestions etc final thoughts":
-        //         item.iconPath = new vscode.ThemeIcon('issues'); // Or 'lightbulb-autofix', 'beaker'
-        //         break;
-        //     default:
-        //         // Optional: default icon
-        //         item.iconPath = new vscode.ThemeIcon('circle-outline');
-        // }
-        // return item;
         if (!data.isCategory) {
             const MAX_LABEL_LENGTH = 150;
             if (item.label && typeof item.label === 'string' && item.label.length > MAX_LABEL_LENGTH) {
                 item.label = item.label.substring(0, MAX_LABEL_LENGTH) + "...";
             }
-            item.iconPath = item.iconPath || new vscode.ThemeIcon('debug-console');
+            // item.iconPath = item.iconPath || new vscode.ThemeIcon('dash');
             // Content lines generally shouldn't have descriptions
             item.description = undefined;
         }
