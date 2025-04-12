@@ -42,7 +42,7 @@ class AutoDebugViewProvider {
     // Store the root items for the tree view
     rootItems = [
         { id: "trace", label: "Full trace", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('list-unordered') },
-        { id: "suggestions", label: "Code suggestions etc final thoughts", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('issues') }
+        { id: "suggestions", label: "Suggestions", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('issues') }
     ];
     contentCounter = 0;
     constructor(context) {
@@ -59,22 +59,14 @@ class AutoDebugViewProvider {
         item.iconPath = data.icon;
         item.description = data.description;
         item.command = data.command;
-        if (!data.isCategory) {
-            // For regular trace lines
-            if (!item.command) { // Don't override formatting for command items
-                const MAX_LABEL_LENGTH = 150;
-                if (item.label && typeof item.label === 'string' && item.label.length > MAX_LABEL_LENGTH) {
-                    item.label = item.label.substring(0, MAX_LABEL_LENGTH) + "...";
-                }
-                // Use 'dash' icon for simple lines
-                item.iconPath = item.iconPath || new vscode.ThemeIcon('dash');
-                item.description = undefined; // Content lines shouldn't have descriptions
+        if (!data.isCategory && !data.command) {
+            const MAX_LABEL_LENGTH = 150;
+            if (item.label && typeof item.label === 'string' && item.label.length > MAX_LABEL_LENGTH) {
+                item.label = item.label.substring(0, MAX_LABEL_LENGTH) + "...";
             }
-            else {
-                // For special single children (CoT, Suggestions) that have commands
-                item.iconPath = item.iconPath || new vscode.ThemeIcon('go-to-file'); // Icon indicating action
-                item.tooltip = "Click to view full content"; // More specific tooltip
-            }
+            item.iconPath = item.iconPath || new vscode.ThemeIcon('dash');
+            item.description = undefined; // Trace lines don't need descriptions here
+            item.tooltip = data.content || data.label; // Use line content for trace line tooltip
         }
         return item;
     }
@@ -96,16 +88,19 @@ class AutoDebugViewProvider {
         return element;
     }
     getChildren(element) {
-        if (element && element.id) {
+        if (element?.id) {
+            // If getting children for suggestions, return empty as it acts as a button
+            if (element.id === 'suggestions') {
+                return Promise.resolve([]);
+            }
             const parentData = this.findNodeById(element.id, this.rootItems);
             if (parentData) {
-                // Type child explicitly
-                return Promise.resolve(parentData.children.map((child) => this.dataToTreeItem(child)));
+                return Promise.resolve(parentData.children.map(child => this.dataToTreeItem(child)));
             }
         }
         else {
-            // Type item explicitly
-            return Promise.resolve(this.rootItems.map((item) => this.dataToTreeItem(item)));
+            // Return root items
+            return Promise.resolve(this.rootItems.map(item => this.dataToTreeItem(item)));
         }
         return Promise.resolve([]);
     }
@@ -129,83 +124,108 @@ class AutoDebugViewProvider {
             console.warn(`Category node with id "${nodeId}" not found for setting content.`);
             return;
         }
+        let needsRefresh = false;
         if (nodeId === 'trace') {
             // Handle trace lines as individual children
             if (!Array.isArray(content)) {
                 console.warn(`Invalid content type for trace node in setNodeContent. Expected string[].`);
                 node.children = [];
                 node.description = description ?? "(Invalid content)";
-                this._onDidChangeTreeData.fire();
-                return;
+                needsRefresh = true;
             }
-            node.children = content.map((line) => {
-                const childId = `${nodeId}_content_${this.contentCounter++}`;
-                return {
-                    id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
-                };
-            });
-            node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
+            else {
+                const previousChildCount = node.children.length;
+                node.children = content.map((line) => {
+                    const childId = `${nodeId}_content_${this.contentCounter++}`;
+                    return {
+                        id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
+                    };
+                });
+                node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
+                // Refresh if children changed or description changed
+                needsRefresh = node.children.length !== previousChildCount || node.description !== description;
+                // Important: Remove any final viewer button added previously if we're resetting content
+                this.removeFinalContentViewer(nodeId); // Add helper or inline logic
+            }
         }
-        else if (nodeId === 'suggestions') { // Simplified condition, only handles suggestions now
-            // Handle Suggestions as single markdown string displayed via webview
+        else if (nodeId === 'suggestions') {
+            // Handle Suggestions: Modify the root item itself to be clickable
             if (typeof content !== 'string') {
                 console.warn(`Invalid content type for ${nodeId} node. Expected string.`);
-                node.children = [];
+                // Clear previous state if invalid content received
+                node.fullContent = undefined;
+                node.command = undefined;
+                node.children = []; // Ensure no children
                 node.description = description ?? "(Invalid content)";
-                this._onDidChangeTreeData.fire();
-                return;
+                needsRefresh = true;
             }
-            const childId = `${nodeId}_content_${this.contentCounter++}`;
-            const fullMarkdown = content;
-            // Specific labels/titles for suggestions
-            const childLabel = "View Suggestions";
-            const viewTitle = "Suggestions & Final Thoughts";
-            node.children = [{
-                    id: childId,
-                    label: childLabel,
-                    content: fullMarkdown,
-                    children: [],
-                    isCategory: false,
-                    command: {
-                        command: 'autodebug.showContentWebView',
-                        title: `Show ${childLabel}`,
-                        arguments: [fullMarkdown, viewTitle]
-                    }
-                }];
-            node.description = description ?? (content ? "(Content available)" : "(empty)");
+            else {
+                const viewTitle = "Suggestions & Final Thoughts";
+                const newCommand = {
+                    command: 'autodebug.showContentWebView',
+                    title: 'Show Suggestions & Final Thoughts', // Tooltip for the command itself
+                    arguments: [content, viewTitle]
+                };
+                const newDescription = description ?? (content ? "(Click to view)" : "(empty)");
+                // Check if update is actually needed
+                if (node.fullContent !== content || node.description !== newDescription || JSON.stringify(node.command) !== JSON.stringify(newCommand)) {
+                    node.fullContent = content; // Store full content
+                    node.command = newCommand; // Assign command directly to the root item
+                    node.children = []; // Ensure no children
+                    node.description = newDescription;
+                    needsRefresh = true;
+                }
+            }
         }
         else {
             console.warn(`Unknown or unsupported nodeId for setNodeContent: ${nodeId}`);
             node.children = [];
             node.description = description ?? "(Unknown node type)";
+            needsRefresh = true; // Assume refresh needed if unknown
         }
-        this._onDidChangeTreeData.fire();
-    }
-    appendNodeContentLine(nodeId, newTextLine, updateDescription = true) {
-        if (nodeId === 'suggestions') {
-            console.warn(`Appending lines directly is not standard for node '${nodeId}'. Use setNodeContent.`);
-            return;
-        }
-        // Original logic for 'trace' - append as a new child
-        const node = this.findRootNode(nodeId);
-        if (node && node.isCategory && nodeId === 'trace') {
-            const childId = `${nodeId}_content_${this.contentCounter++}`;
-            node.children.push({
-                id: childId,
-                label: newTextLine,
-                content: newTextLine,
-                children: [],
-                isCategory: false,
-                command: undefined // Ensure appended trace lines have no command
-            });
-            if (updateDescription) {
-                // Update description to reflect total items (lines + potential viewer button later)
-                node.description = `(${node.children.length} items)`;
-            }
+        if (needsRefresh) {
             this._onDidChangeTreeData.fire();
         }
-        else if (nodeId !== 'trace') {
-            console.warn(`Cannot append to node '${nodeId}'.`);
+    }
+    removeFinalContentViewer(nodeId) {
+        if (nodeId !== 'trace')
+            return;
+        const node = this.findRootNode(nodeId);
+        if (node) {
+            const viewerIndex = node.children.findIndex(child => child.command?.command === 'autodebug.showContentWebView');
+            if (viewerIndex > -1) {
+                node.children.splice(viewerIndex, 1);
+                // Don't necessarily fire here, let the caller handle it.
+            }
+        }
+    }
+    appendNodeContentLine(nodeId, newTextLine, updateDescription = true) {
+        if (nodeId !== 'trace') {
+            console.warn(`Appending lines directly is not supported for node '${nodeId}'. Use setNodeContent.`);
+            return;
+        }
+        const node = this.findRootNode(nodeId);
+        if (node && node.isCategory) {
+            // Ensure we don't add lines *after* the viewer button if it exists
+            const viewerIndex = node.children.findIndex(child => child.command?.command === 'autodebug.showContentWebView');
+            const childId = `${nodeId}_content_${this.contentCounter++}`;
+            const newItem = {
+                id: childId, label: newTextLine, content: newTextLine, children: [], isCategory: false, command: undefined
+            };
+            if (viewerIndex > -1) {
+                // Insert before the viewer button
+                node.children.splice(viewerIndex, 0, newItem);
+            }
+            else {
+                // Append to the end if no viewer button yet
+                node.children.push(newItem);
+            }
+            if (updateDescription) {
+                const lineCount = node.children.filter(c => !c.command).length; // Count only lines
+                const hasViewer = viewerIndex > -1;
+                node.description = `(${lineCount} lines${hasViewer ? ' + Viewer' : ''})`;
+            }
+            this._onDidChangeTreeData.fire();
         }
         else {
             console.warn(`Category node with id "${nodeId}" not found for appending content.`);
@@ -214,33 +234,26 @@ class AutoDebugViewProvider {
     addFinalContentViewer(nodeId) {
         if (nodeId !== 'trace') {
             console.warn(`addFinalContentViewer called for non-trace node: ${nodeId}. Ignoring.`);
-            return; // Only applicable to trace for now
+            return;
         }
         const node = this.findRootNode(nodeId);
-        if (!node || !node.isCategory) {
-            console.warn(`Cannot add final viewer: Category node with id "${nodeId}" not found.`);
+        if (!node || !node.isCategory) { /* ... error ... */
             return;
         }
-        // Check if a viewer button already exists (prevent duplicates)
         const existingViewer = node.children.find(child => child.command?.command === 'autodebug.showContentWebView');
-        if (existingViewer) {
-            console.warn(`Final viewer button already exists for node: ${nodeId}.`);
-            // Optionally update its content? For now, just return.
+        if (existingViewer) { /* ... warn ... */
             return;
         }
-        // Gather content from all existing children (which should be trace lines)
         const fullTraceContent = node.children
-            .map(child => child.content || '') // Get content, default to empty string if missing
+            .filter(child => !child.command) // Only join content from lines
+            .map(child => child.content || '')
             .join('\n');
-        if (!fullTraceContent && node.children.length === 0) {
-            console.log(`No content found for node ${nodeId}, skipping final viewer.`);
-            // Optionally add an "(empty)" viewer? Or just do nothing.
+        if (!fullTraceContent && node.children.filter(c => !c.command).length === 0) { /* ... skip ... */
             return;
         }
         const childId = `${nodeId}_viewer_${this.contentCounter++}`;
         const childLabel = "View Full Trace";
         const viewTitle = "Full Debug Trace";
-        // Create the viewer button data
         const viewerButton = {
             id: childId, label: childLabel, content: fullTraceContent, children: [], isCategory: false,
             icon: new vscode.ThemeIcon('go-to-file'),
@@ -248,41 +261,66 @@ class AutoDebugViewProvider {
                 command: 'autodebug.showContentWebView', title: `Show ${childLabel}`, arguments: [fullTraceContent, viewTitle]
             }
         };
-        // Push the viewer button to the end of the children list
         node.children.push(viewerButton);
-        // Update description if needed (e.g., indicate viewer is available)
-        // node.description = `(${node.children.length -1} lines + Viewer)`; // Example description update
-        this._onDidChangeTreeData.fire(); // Refresh the tree view
+        this._onDidChangeTreeData.fire();
     }
     clearNodeContent(nodeId, description) {
         const node = this.findRootNode(nodeId);
-        if (node && node.isCategory) {
-            const hadChildren = node.children.length > 0;
+        if (!node || !node.isCategory) {
+            console.warn(`Category node with id "${nodeId}" not found for clearing content.`);
+            return;
+        }
+        let changed = false;
+        const defaultDesc = "(cleared)";
+        if (node.children.length > 0) {
             node.children = [];
-            node.description = description ?? "(cleared)"; // Set to provided description or default
-            if (hadChildren) {
-                this._onDidChangeTreeData.fire();
+            changed = true;
+        }
+        // Specifically clear command and content for suggestions when cleared
+        if (nodeId === 'suggestions') {
+            if (node.command) {
+                node.command = undefined;
+                changed = true;
             }
-            else {
-                // If description changed, still need to fire event
-                this._onDidChangeTreeData.fire();
+            if (node.fullContent) {
+                node.fullContent = undefined;
+                changed = true;
             }
         }
-        else {
-            console.warn(`Category node with id "${nodeId}" not found for clearing content.`);
+        const finalDescription = description ?? defaultDesc;
+        if (node.description !== finalDescription) {
+            node.description = finalDescription;
+            changed = true;
+        }
+        if (changed) {
+            this._onDidChangeTreeData.fire();
         }
     }
     clearAllNodes(resetDescription = "Awaiting debug process...") {
         let changed = false;
         this.rootItems.forEach(node => {
+            let nodeChanged = false;
             if (node.children.length > 0) {
                 node.children = [];
-                changed = true;
+                nodeChanged = true;
+            }
+            // Clear command/content for suggestions specifically
+            if (node.id === 'suggestions') {
+                if (node.command) {
+                    node.command = undefined;
+                    nodeChanged = true;
+                }
+                if (node.fullContent) {
+                    node.fullContent = undefined;
+                    nodeChanged = true;
+                }
             }
             if (node.description !== resetDescription) {
                 node.description = resetDescription;
-                changed = true;
+                nodeChanged = true;
             }
+            if (nodeChanged)
+                changed = true;
         });
         if (changed) {
             this._onDidChangeTreeData.fire();

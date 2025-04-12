@@ -106,7 +106,8 @@ async def debug_target(request: DebugRequest):
 @app.get("/get_summary")
 async def get_summary():
     """
-    Returns the summary of the debugging session (everything printed after the delimiter).
+    Returns the summary of the debugging session, defined as the content between the first
+    and second occurrence of the delimiter "========================================".
     Waits until the agent has finished.
     """
     global agent_output, agent_finished
@@ -116,12 +117,16 @@ async def get_summary():
     with output_lock:
         full_output = agent_output
     delimiter = "========================================"
-    if delimiter in full_output:
-        idx = full_output.find(delimiter)
-        summary = full_output[idx + len(delimiter):].strip()
-        return PlainTextResponse(summary)
-    else:
-        return PlainTextResponse("No summary found.")
+    first_idx = full_output.find(delimiter)
+    if first_idx == -1:
+        return PlainTextResponse("No summary found. First delimiter not present.")
+    second_idx = full_output.find(delimiter, first_idx + len(delimiter))
+    if second_idx == -1:
+        return PlainTextResponse("No summary found. Second delimiter not present.")
+    
+    # Extract content between the two delimiters.
+    summary = full_output[first_idx + len(delimiter):second_idx].strip()
+    return PlainTextResponse(summary)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
