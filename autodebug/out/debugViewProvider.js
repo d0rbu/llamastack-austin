@@ -150,82 +150,82 @@ class AutoDebugViewProvider {
             console.warn(`Category node with id "${nodeId}" not found for setting content.`);
             return;
         }
-        if (nodeId === 'trace' && Array.isArray(content)) {
-            // Handle trace lines as before
-            node.children = content.map((line) => {
-                const childId = `${nodeId}_content_${this.contentCounter++}`;
-                return {
-                    id: childId, label: line, content: line, children: [], isCategory: false,
-                };
-            });
-            node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
+        let childLabel = "View Content"; // Default label
+        let fullContentString;
+        let commandArgs; // [content, title]
+        if (nodeId === 'trace') {
+            if (Array.isArray(content)) {
+                fullContentString = content.join('\n');
+                childLabel = "View Full Trace";
+                node.description = description ?? (content.length > 0 ? `(${content.length} lines)` : "(empty)");
+            }
+            else if (typeof content === 'string') {
+                // Allow setting trace from a single string too
+                fullContentString = content;
+                childLabel = "View Full Trace";
+                node.description = description ?? (content ? "(Content available)" : "(empty)");
+            }
+            else {
+                console.warn(`Invalid content type for trace node. Expected string[] or string.`);
+                node.children = [];
+                node.description = description ?? "(Invalid content)";
+                this._onDidChangeTreeData.fire();
+                return;
+            }
+            commandArgs = [fullContentString, "Full Debug Trace"];
         }
-        else if ((nodeId === 'cot' || nodeId === 'suggestions') && typeof content === 'string') {
-            // Handle CoT and Suggestions as single markdown string
-            const childId = `${nodeId}_content_${this.contentCounter++}`;
-            const fullMarkdown = content;
-            let childLabel = "View Content"; // Default label
-            if (nodeId === 'cot')
+        else if (nodeId === 'cot') {
+            if (typeof content === 'string') {
+                fullContentString = content;
                 childLabel = "View Chain of Thought";
-            if (nodeId === 'suggestions')
+                node.description = description ?? (content ? "(Content available)" : "(empty)");
+                commandArgs = [fullContentString, "Chain of Thought"];
+            }
+            else {
+                console.warn(`Invalid content type for cot node. Expected string.`);
+                node.children = [];
+                node.description = description ?? "(Invalid content)";
+                this._onDidChangeTreeData.fire();
+                return;
+            }
+        }
+        else if (nodeId === 'suggestions') {
+            if (typeof content === 'string') {
+                fullContentString = content;
                 childLabel = "View Suggestions";
-            node.children = [{
-                    id: childId,
-                    label: childLabel, // Specific label
-                    content: fullMarkdown, // Store the FULL markdown here
-                    children: [],
-                    isCategory: false,
-                    // Define the command to be executed when this item is clicked
-                    command: {
-                        command: 'autodebug.showMarkdownContent', // Command ID registered in extension.ts
-                        title: 'Show Content', // Command title (used internally/tooltip)
-                        arguments: [fullMarkdown] // Pass the full markdown as argument
-                    }
-                }];
-            // Update description (maybe just indicate content is loaded)
-            node.description = description ?? "(Content available)";
+                node.description = description ?? (content ? "(Content available)" : "(empty)");
+                commandArgs = [fullContentString, "Suggestions & Final Thoughts"];
+            }
+            else {
+                console.warn(`Invalid content type for suggestions node. Expected string.`);
+                node.children = [];
+                node.description = description ?? "(Invalid content)";
+                this._onDidChangeTreeData.fire();
+                return;
+            }
         }
         else {
-            console.warn(`Invalid content type or nodeId for setNodeContent. NodeId: ${nodeId}, Content type: ${typeof content}`);
-            // Fallback: Clear children and set description
+            console.warn(`Unknown nodeId for setNodeContent: ${nodeId}`);
             node.children = [];
-            node.description = description ?? "(Invalid content)";
-        }
-        this._onDidChangeTreeData.fire();
-    }
-    appendNodeContentLine(nodeId, newTextLine, updateDescription = true) {
-        if (nodeId === 'cot' || nodeId === 'suggestions') {
-            console.warn(`Appending lines directly is not standard for node '${nodeId}'. Use setNodeContent.`);
-            // Optional: Implement appending to the single child's content if needed for streaming
-            const node = this.findRootNode(nodeId);
-            if (node && node.children.length === 1) {
-                node.children[0].content += "\n" + newTextLine;
-                // Re-assign command arguments if needed? Might be complex.
-                // Firing change event on the parent is usually enough.
-                this._onDidChangeTreeData.fire();
-            }
+            node.description = description ?? "(Unknown node type)";
+            this._onDidChangeTreeData.fire();
             return;
         }
-        // Original logic for 'trace'
-        const node = this.findRootNode(nodeId);
-        if (node && node.isCategory) {
-            // ... (rest of the original append logic for trace) ...
-            const childId = `${nodeId}_content_${this.contentCounter++}`;
-            node.children.push({
+        // Create the single child item for all categories
+        const childId = `${nodeId}_content_${this.contentCounter++}`;
+        node.children = [{
                 id: childId,
-                label: newTextLine,
-                content: newTextLine,
+                label: childLabel,
+                content: fullContentString, // Store the full content here
                 children: [],
                 isCategory: false,
-            });
-            if (updateDescription) {
-                node.description = `(${node.children.length} items)`;
-            }
-            this._onDidChangeTreeData.fire();
-        }
-        else {
-            console.warn(`Category node with id "${nodeId}" not found for appending content.`);
-        }
+                command: {
+                    command: 'autodebug.showContentWebView', // Central command ID
+                    title: `Show ${childLabel}`, // Command title (used internally/tooltip)
+                    arguments: commandArgs // Pass [content, title]
+                }
+            }];
+        this._onDidChangeTreeData.fire();
     }
     clearNodeContent(nodeId, description) {
         const node = this.findRootNode(nodeId);

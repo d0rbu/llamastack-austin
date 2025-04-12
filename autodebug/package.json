@@ -28,14 +28,14 @@
       }
     ],
     "menus": {
-			"view/title": [
+      "view/title": [
         {
-          "command": "autodebug.selectMakefile", 
-          "when": "view == targetPickerView", 
+          "command": "autodebug.selectMakefile",
+          "when": "view == targetPickerView",
           "group": "navigation@1"
         }
-			]
-		},
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -67,6 +67,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "^1.99.0",
