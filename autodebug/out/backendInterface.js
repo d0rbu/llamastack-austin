@@ -160,6 +160,7 @@ class BackendInterface {
             if (!answerRes.ok) {
                 throw new Error(`Failed to fetch final answer: ${answerRes.statusText}`);
             }
+            let answerText = '';
             try {
                 const answerText = await answerRes.text();
                 if (answerText.trim() === '') {
@@ -176,7 +177,7 @@ class BackendInterface {
             // Yield the final answer as a DebugResponse of type 'answer'
             yield {
                 type: 'answer',
-                content: answerData.answer || 'No final answer available' // Assuming the answer is in answerData.answer
+                content: answerText || 'No final answer available' // Assuming the answer is in answerData.answer
             };
         }
         catch (err) {
@@ -184,7 +185,7 @@ class BackendInterface {
         }
     }
     async mockFetchBuildTargets() {
-        return ['test_1', 'test_2', 'test_3'];
+        return ['test_executables/test_1', 'test_executables/test_2', 'test_executables/test_3'];
     }
 }
 exports.BackendInterface = BackendInterface;

@@ -144,6 +144,7 @@ export class BackendInterface {
                 throw new Error(`Failed to fetch final answer: ${answerRes.statusText}`);
             }
     
+            let answerText = '';
             try {
                 const answerText = await answerRes.text();
                 if (answerText.trim() === '') {
@@ -160,7 +161,7 @@ export class BackendInterface {
             // Yield the final answer as a DebugResponse of type 'answer'
             yield {
                 type: 'answer',
-                content: answerData.answer || 'No final answer available' // Assuming the answer is in answerData.answer
+                content: answerText || 'No final answer available' // Assuming the answer is in answerData.answer
             };
     
         } catch (err) {
@@ -170,6 +171,6 @@ export class BackendInterface {
     
 
     async mockFetchBuildTargets(): Promise<string[]> {
-        return ['test_1', 'test_2', 'test_3'];
+        return ['test_executables/test_1', 'test_executables/test_2', 'test_executables/test_3'];
     }
 } 
