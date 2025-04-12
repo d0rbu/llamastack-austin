@@ -4,6 +4,7 @@ import { TargetPickerViewProvider } from './targetPickerViewProvider';
 import * as path from 'path';
 import { BackendInterface, DebugResponse } from './backendInterface';
 import MarkdownIt from 'markdown-it';
+import Convert from 'ansi-to-html';
 
 export function activate(context: vscode.ExtensionContext) {
     const autoDebugViewProvider = new AutoDebugViewProvider(context);
@@ -108,16 +109,25 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 
-        // Initialize markdown-it
-        const md = new MarkdownIt({
-            html: true, // Enable HTML tags in source
-            linkify: true, // Autoconvert URL-like text to links
-            typographer: true, // Enable some language-neutral replacement + quotes beautification
-            breaks: true, // Convert '\n' in paragraphs into <br>
-        });
+        let htmlContent: string;
 
-        // Render the markdown content to HTML
-        const htmlContent = md.render(content);
+        if (title === 'Trace') {
+            // Convert ANSI codes to HTML for trace content
+            const convert = new Convert();
+            const ansiHtml = convert.toHtml(content);
+            // Wrap in pre/code for fixed-width font and preserving whitespace
+            htmlContent = `<pre><code>${ansiHtml}</code></pre>`; 
+        } else {
+             // Initialize markdown-it for non-trace content
+             const md = new MarkdownIt({
+                 html: true, // Enable HTML tags in source
+                 linkify: true, // Autoconvert URL-like text to links
+                 typographer: true, // Enable some language-neutral replacement + quotes beautification
+                 breaks: true // Convert '\n' in paragraphs into <br>
+             });
+             // Render the markdown content to HTML
+              htmlContent = md.render(content);
+        }
 
         // Set the webview's initial html content
         panel.webview.html = getWebviewContent(htmlContent, title);
@@ -139,7 +149,7 @@ export function activate(context: vscode.ExtensionContext) {
 		showContentWebViewCommand 
     );
 }
-function getWebviewContent(renderedMarkdown: string, title: string): string {
+function getWebviewContent(renderedContent: string, title: string): string {
     // Basic HTML structure with some default styling for readability
     // You can enhance this with more sophisticated CSS or a CSS framework
     return `<!DOCTYPE html>
@@ -217,7 +227,7 @@ function getWebviewContent(renderedMarkdown: string, title: string): string {
 <body>
     <h1>${title}</h1>
     <hr>
-    ${renderedMarkdown}
+    ${renderedContent}
 </body>
 </html>`;
 }

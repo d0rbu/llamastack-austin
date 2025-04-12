@@ -43,6 +43,7 @@ const debugViewProvider_1 = require("./debugViewProvider");
 const targetPickerViewProvider_1 = require("./targetPickerViewProvider");
 const backendInterface_1 = require("./backendInterface");
 const markdown_it_1 = __importDefault(require("markdown-it"));
+const ansi_to_html_1 = __importDefault(require("ansi-to-html"));
 function activate(context) {
     const autoDebugViewProvider = new debugViewProvider_1.AutoDebugViewProvider(context);
     vscode.window.registerTreeDataProvider('autodebugView', autoDebugViewProvider);
@@ -127,15 +128,25 @@ function activate(context) {
             // Restrict the webview to only loading content from our extension's `media` directory.
             // localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')] // Optional: If loading local resources
         });
-        // Initialize markdown-it
-        const md = new markdown_it_1.default({
-            html: true, // Enable HTML tags in source
-            linkify: true, // Autoconvert URL-like text to links
-            typographer: true, // Enable some language-neutral replacement + quotes beautification
-            breaks: true, // Convert '\n' in paragraphs into <br>
-        });
-        // Render the markdown content to HTML
-        const htmlContent = md.render(content);
+        let htmlContent;
+        if (title === 'Trace') {
+            // Convert ANSI codes to HTML for trace content
+            const convert = new ansi_to_html_1.default();
+            const ansiHtml = convert.toHtml(content);
+            // Wrap in pre/code for fixed-width font and preserving whitespace
+            htmlContent = `<pre><code>${ansiHtml}</code></pre>`;
+        }
+        else {
+            // Initialize markdown-it for non-trace content
+            const md = new markdown_it_1.default({
+                html: true, // Enable HTML tags in source
+                linkify: true, // Autoconvert URL-like text to links
+                typographer: true, // Enable some language-neutral replacement + quotes beautification
+                breaks: true // Convert '\n' in paragraphs into <br>
+            });
+            // Render the markdown content to HTML
+            htmlContent = md.render(content);
+        }
         // Set the webview's initial html content
         panel.webview.html = getWebviewContent(htmlContent, title);
         // Optional: Listen for messages from the webview
@@ -146,7 +157,7 @@ function activate(context) {
     });
     context.subscriptions.push(selectMakefileCommand, debugTargetCommand, showContentWebViewCommand);
 }
-function getWebviewContent(renderedMarkdown, title) {
+function getWebviewContent(renderedContent, title) {
     // Basic HTML structure with some default styling for readability
     // You can enhance this with more sophisticated CSS or a CSS framework
     return `<!DOCTYPE html>
@@ -224,7 +235,7 @@ function getWebviewContent(renderedMarkdown, title) {
 <body>
     <h1>${title}</h1>
     <hr>
-    ${renderedMarkdown}
+    ${renderedContent}
 </body>
 </html>`;
 }
