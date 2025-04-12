@@ -4,6 +4,7 @@ import { TargetPickerViewProvider } from './targetPickerViewProvider';
 import * as path from 'path';
 import { BackendInterface, DebugResponse } from './backendInterface';
 import MarkdownIt from 'markdown-it';
+import Convert from 'ansi-to-html';
 
 export function activate(context: vscode.ExtensionContext) {
     const autoDebugViewProvider = new AutoDebugViewProvider(context);
@@ -124,16 +125,97 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 
-        // Initialize markdown-it
-        const md = new MarkdownIt({
-            html: true, // Enable HTML tags in source
-            linkify: true, // Autoconvert URL-like text to links
-            typographer: true, // Enable some language-neutral replacement + quotes beautification
-            breaks: true, // Convert '\n' in paragraphs into <br>
+        // Convert ANSI codes to HTML spans, but keep original newlines (\n)
+        const convert = new Convert({
+            newline: false, // Keep \n instead of converting to <br>
+            escapeXML: true // Escape HTML entities
         });
+        const ansiHtml = convert.toHtml(content);
 
-        // Render the markdown content to HTML
-        const htmlContent = md.render(content);
+        let htmlContent: string;
+        // const convert = new Convert({
+        //     newline: true, // Convert newline characters to <br>
+        //     escapeXML: true // Escape HTML entities
+        // });
+        // const ansiHtml = convert.toHtml(content);
+
+        if (title === 'Trace') {
+            // For trace, wrap the ANSI-converted HTML (with spans and \n) in <pre><code>
+            // The browser will handle \n correctly inside <pre>
+            // Convert ANSI codes to HTML for trace content
+            // Wrap in pre/code for fixed-width font and preserving whitespace
+            // const traceHtml = ansiHtml.replace(/\n/g, '<br>'); // No longer needed, <pre> handles \n
+            htmlContent = `<pre><code>${ansiHtml}</code></pre>`;
+        } else {
+             // For suggestions (non-trace), use full pre-processing
+
+             // 1. Extract raw code blocks and replace with placeholders
+             const codeBlocksRaw: { placeholder: string; rawContent: string; lang: string }[] = [];
+             let i = 0;
+             const contentWithPlaceholders = content.replace(
+                 /^( {0,3})(```|~~~)(.*?)?$\n([\s\S]*?)\n^( {0,3})(\2)$\n?/gm,
+                 (match, indentStart, fenceChars, lang, blockContent, indentEnd, fenceCharsEnd) => {
+                     const placeholder = `%%CODE_BLOCK_${i++}%%`;
+                     codeBlocksRaw.push({ placeholder: placeholder, rawContent: blockContent, lang: lang ? lang.trim() : '' });
+                     return placeholder + '\n';
+                 }
+             );
+
+             // 2. Process content inside each fenced code block separately
+             const codeBlocksProcessed: { placeholder: string; htmlContent: string; lang: string }[] = codeBlocksRaw.map(block => {
+                 let processed = block.rawContent;
+                 processed = processed.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'); // Decode entities
+                 processed = processed.replace(/<\/?b>/g, ''); // Remove <b> tags
+                 const convert = new Convert({ newline: false, escapeXML: true }); // Convert ANSI
+                 processed = convert.toHtml(processed);
+                 return { placeholder: block.placeholder, htmlContent: processed, lang: block.lang };
+             });
+
+             // 3. Process the main content string (with placeholders) fully
+             let fullyProcessedContent = contentWithPlaceholders;
+             fullyProcessedContent = fullyProcessedContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'); // Decode entities
+             fullyProcessedContent = fullyProcessedContent.replace(/<\/?b>/g, ''); // Remove <b> tags
+             const convertOuter = new Convert({ newline: false, escapeXML: true }); // Convert ANSI
+             fullyProcessedContent = convertOuter.toHtml(fullyProcessedContent); // Result is HTML with spans and placeholders
+
+             // 4. Configure and run markdown-it on the fully processed content
+             const md = new MarkdownIt({
+                 html: true, // Allow the pre-generated HTML (spans)
+                 linkify: true,
+                 typographer: false,
+             });
+             // Render the string that already contains HTML spans etc.
+             let renderedHtml = md.render(fullyProcessedContent);
+
+             // 5. Inject the processed fenced code blocks
+             codeBlocksProcessed.forEach(block => {
+                 const langClass = block.lang ? `language-${block.lang}` : '';
+                 const codeBlockHtml = `<pre class="hljs ${langClass}"><code>${block.htmlContent}</code></pre>`;
+
+                 const escapedPlaceholder = block.placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                 // Regex needs to find placeholder within the rendered HTML (might be inside <p> etc)
+                 const regex = new RegExp(`(<p>\\s*${escapedPlaceholder}\\s*</p>)|(${escapedPlaceholder})`, 'g');
+                  renderedHtml = renderedHtml.replace(regex, (match, pTagMatch, standaloneMatch) => {
+                      // Replace the placeholder paragraph or the standalone placeholder
+                      return codeBlockHtml;
+                  });
+             });
+
+             // 6. Post-process to decode escaped spans/quotes within inline <code> tags
+             renderedHtml = renderedHtml.replace(/<code>(.*?)<\/code>/gs, (match, codeContent) => {
+                 let decodedContent = codeContent;
+                 // Decode entities likely created by escapeXML: true for spans and quotes
+                 decodedContent = decodedContent.replace(/&lt;span/g, '<span')         // <span
+                                                .replace(/&lt;\/span&gt;/g, '</span>')     // </span>
+                                                .replace(/&quot;/g, '"')           // Quotes in styles
+                                                .replace(/&amp;lt;/g, '&lt;')       // Handle potential double escape of <
+                                                .replace(/&amp;gt;/g, '&gt;')       // Handle potential double escape of >
+                                                .replace(/&amp;amp;/g, '&amp;');      // Handle potential double escape of &
+                 return `<code>${decodedContent}</code>`;
+             });
+
+             htmlContent = renderedHtml;
+        }
 
         // Set the webview's initial html content
         panel.webview.html = getWebviewContent(htmlContent, title);
@@ -155,7 +237,7 @@ export function activate(context: vscode.ExtensionContext) {
 		showContentWebViewCommand 
     );
 }
-function getWebviewContent(renderedMarkdown: string, title: string): string {
+function getWebviewContent(renderedContent: string, title: string): string {
     // Basic HTML structure with some default styling for readability
     // You can enhance this with more sophisticated CSS or a CSS framework
     return `<!DOCTYPE html>
@@ -184,6 +266,15 @@ function getWebviewContent(renderedMarkdown: string, title: string): string {
             padding: 0.2em 0.4em;
             border-radius: 3px;
             font-size: 0.9em; /* Slightly smaller for inline code */
+        }
+        /* Style for spans generated by ansi-to-html specifically inside inline code blocks */
+        /* Reset padding/margin and ensure background doesn't conflict badly */
+        :not(pre) > code > span {
+           padding: 0 !important;
+           margin: 0 !important;
+           /* Inherit background to let the <code> background show through, */
+           /* but allow span foreground color to override */
+           /* background-color: inherit !important; /* Optional: uncomment if span backgrounds are problematic */
         }
         pre {
             background-color: var(--vscode-textCodeBlock-background);
@@ -233,7 +324,7 @@ function getWebviewContent(renderedMarkdown: string, title: string): string {
 <body>
     <h1>${title}</h1>
     <hr>
-    ${renderedMarkdown}
+    ${renderedContent}
 </body>
 </html>`;
 }

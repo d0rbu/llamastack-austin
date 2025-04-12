@@ -170,6 +170,6 @@ export class BackendInterface {
     
 
     async mockFetchBuildTargets(): Promise<string[]> {
-        return ['test_executables/test_1', 'test_executables/test_2', 'test_executables/test_3'];
+        return ['test_executables/test_1', 'test_executables/test_2', 'test_executables/test_3', 'test_executables/test_4', 'test_executables/test_5'];
     }
 } 
