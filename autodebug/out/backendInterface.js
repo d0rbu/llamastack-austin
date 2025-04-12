@@ -121,6 +121,7 @@ class BackendInterface {
             return;
         }
         const endpoint = `${BACKEND_URL}/debug_target`;
+        const finalAnswerEndpoint = `${BACKEND_URL}/get_summary`; // Assuming the final answer can be fetched from this endpoint
         try {
             const res = await fetch(endpoint, {
                 method: 'POST',
@@ -133,6 +134,7 @@ class BackendInterface {
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            // Read and process the stream of trace, cot, and answer
             while (true) {
                 const { value, done } = await reader.read();
                 if (done)
@@ -153,6 +155,19 @@ class BackendInterface {
                     }
                 }
             }
+            // Once the stream finishes, make a request to get the final answer
+            const answerRes = await fetch(finalAnswerEndpoint, {
+                method: 'GET', // Assuming GET for fetching the final answer
+            });
+            if (!answerRes.ok) {
+                throw new Error(`Failed to fetch final answer: ${answerRes.statusText}`);
+            }
+            const answerData = await answerRes.json();
+            // Yield the final answer as a DebugResponse of type 'answer'
+            yield {
+                type: 'answer',
+                content: answerData.answer || 'No final answer available' // Assuming the answer is in answerData.answer
+            };
         }
         catch (err) {
             vscode.window.showErrorMessage(`Error debugging target: ${err}`);

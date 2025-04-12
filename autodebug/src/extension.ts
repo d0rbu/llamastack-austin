@@ -28,10 +28,9 @@ export function activate(context: vscode.ExtensionContext) {
             await targetPickerProvider.loadTargets(uri[0].fsPath);
         }
     });
-
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
         const backend = new BackendInterface(context);
-    
+        
         const bugDescription = await vscode.window.showInputBox({
             prompt: 'Describe the bug or unexpected behavior you are encountering.',
             placeHolder: 'e.g., segfault when input is empty'
@@ -58,18 +57,52 @@ export function activate(context: vscode.ExtensionContext) {
                     const cotLines: string[] = [];
                     const suggestionLines: string[] = [];
     
+                    // Track the current stream state
+                    let currentSection: 'trace' | 'cot' | 'answer' = 'trace';
+    
                     // Call the backend method to start debugging and get the stream
                     const debugStream = backend.debugTarget(target, bugDescription);
     
                     // Iterate over the async generator to process each DebugResponse
                     for await (const result of debugStream) {
                         if (result.type === 'trace') {
-                            traceLines.push(result.content);
-                            autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
+                            // If we're already in the trace section, continue adding lines
+                            if (currentSection === 'trace') {
+                                traceLines.push(result.content);
+                                autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
+                            }
                         } else if (result.type === 'cot') {
+                            // When switching to 'cot', finish the trace section and display it in the webview
+                            if (currentSection === 'trace') {
+                                currentSection = 'cot';  // Switch to cot section
+                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
+                                // Display trace in webview as markdown
+                                const traceContent = traceLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
+                                progress.report({ increment: 33, message: "Trace complete!" });
+                            }
+    
                             cotLines.push(result.content);
                             autoDebugViewProvider.setNodeContent("cot", cotLines, `${cotLines.length} reasoning steps`);
                         } else if (result.type === 'answer') {
+                            // Once we hit 'answer', finish the cot section and display it in the webview
+                            if (currentSection === 'cot') {
+                                currentSection = 'answer';  // Switch to answer section
+                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
+                                // Display cot in webview as markdown
+                                const cotContent = cotLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', cotContent, 'Chain of Thought');
+                                progress.report({ increment: 66, message: "Reasoning complete!" });
+                            } else if (currentSection === 'trace') {
+                                currentSection = 'answer';  // Switch to answer section
+                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
+                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
+                                // Display trace in webview as markdown
+                                const traceContent = traceLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
+                                progress.report({ increment: 50, message: "Trace complete!" });
+                            }
+    
                             suggestionLines.push(result.content);
                             autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Compiling suggestions");
                         }
@@ -84,7 +117,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             }
         );
-    });    
+    });     
 
 	const showContentWebViewCommand = vscode.commands.registerCommand('autodebug.showContentWebView', (content: string, title: string) => {
         // Create and show a new webview panel
