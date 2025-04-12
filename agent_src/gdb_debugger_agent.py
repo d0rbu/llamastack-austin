@@ -153,7 +153,8 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
         response = gdbmi.write(f'1-file-exec-and-symbols "{executable_path}"', timeout_sec=10)
 
         print_gdb_output_human(response)
-        load_successful = any(r.get("token") == "1" and r.get("type") == "result" and r.get("message") == "done" for r in response)
+        load_successful = any(r.get("token") == 1 and r.get("type") == "result" and r.get("message") == "done" for r in response)
+        
         if not load_successful:
             console.print(f"[red]Error:[/red] Failed to load executable in GDB. Check GDB output above.")
             for r in response:
