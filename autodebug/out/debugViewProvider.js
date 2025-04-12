@@ -42,7 +42,6 @@ class AutoDebugViewProvider {
     // Store the root items for the tree view
     rootItems = [
         { id: "trace", label: "Full trace", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('list-unordered') },
-        { id: "cot", label: "Chain of thought", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('comment-discussion') },
         { id: "suggestions", label: "Code suggestions etc final thoughts", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('issues') }
     ];
     contentCounter = 0;
@@ -130,82 +129,130 @@ class AutoDebugViewProvider {
             console.warn(`Category node with id "${nodeId}" not found for setting content.`);
             return;
         }
-        let childLabel = "View Content"; // Default label
-        let fullContentString;
-        let commandArgs; // [content, title]
         if (nodeId === 'trace') {
-            if (Array.isArray(content)) {
-                fullContentString = content.join('\n');
-                childLabel = "View Full Trace";
-                node.description = description ?? (content.length > 0 ? `(${content.length} lines)` : "(empty)");
-            }
-            else if (typeof content === 'string') {
-                // Allow setting trace from a single string too
-                fullContentString = content;
-                childLabel = "View Full Trace";
-                node.description = description ?? (content ? "(Content available)" : "(empty)");
-            }
-            else {
-                console.warn(`Invalid content type for trace node. Expected string[] or string.`);
+            // Handle trace lines as individual children
+            if (!Array.isArray(content)) {
+                console.warn(`Invalid content type for trace node in setNodeContent. Expected string[].`);
                 node.children = [];
                 node.description = description ?? "(Invalid content)";
                 this._onDidChangeTreeData.fire();
                 return;
             }
-            commandArgs = [fullContentString, "Full Debug Trace"];
+            node.children = content.map((line) => {
+                const childId = `${nodeId}_content_${this.contentCounter++}`;
+                return {
+                    id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
+                };
+            });
+            node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
         }
-        else if (nodeId === 'cot') {
-            if (typeof content === 'string') {
-                fullContentString = content;
-                childLabel = "View Chain of Thought";
-                node.description = description ?? (content ? "(Content available)" : "(empty)");
-                commandArgs = [fullContentString, "Chain of Thought"];
-            }
-            else {
-                console.warn(`Invalid content type for cot node. Expected string.`);
+        else if (nodeId === 'suggestions') { // Simplified condition, only handles suggestions now
+            // Handle Suggestions as single markdown string displayed via webview
+            if (typeof content !== 'string') {
+                console.warn(`Invalid content type for ${nodeId} node. Expected string.`);
                 node.children = [];
                 node.description = description ?? "(Invalid content)";
                 this._onDidChangeTreeData.fire();
                 return;
             }
-        }
-        else if (nodeId === 'suggestions') {
-            if (typeof content === 'string') {
-                fullContentString = content;
-                childLabel = "View Suggestions";
-                node.description = description ?? (content ? "(Content available)" : "(empty)");
-                commandArgs = [fullContentString, "Suggestions & Final Thoughts"];
-            }
-            else {
-                console.warn(`Invalid content type for suggestions node. Expected string.`);
-                node.children = [];
-                node.description = description ?? "(Invalid content)";
-                this._onDidChangeTreeData.fire();
-                return;
-            }
+            const childId = `${nodeId}_content_${this.contentCounter++}`;
+            const fullMarkdown = content;
+            // Specific labels/titles for suggestions
+            const childLabel = "View Suggestions";
+            const viewTitle = "Suggestions & Final Thoughts";
+            node.children = [{
+                    id: childId,
+                    label: childLabel,
+                    content: fullMarkdown,
+                    children: [],
+                    isCategory: false,
+                    command: {
+                        command: 'autodebug.showContentWebView',
+                        title: `Show ${childLabel}`,
+                        arguments: [fullMarkdown, viewTitle]
+                    }
+                }];
+            node.description = description ?? (content ? "(Content available)" : "(empty)");
         }
         else {
-            console.warn(`Unknown nodeId for setNodeContent: ${nodeId}`);
+            console.warn(`Unknown or unsupported nodeId for setNodeContent: ${nodeId}`);
             node.children = [];
             node.description = description ?? "(Unknown node type)";
-            this._onDidChangeTreeData.fire();
+        }
+        this._onDidChangeTreeData.fire();
+    }
+    appendNodeContentLine(nodeId, newTextLine, updateDescription = true) {
+        if (nodeId === 'suggestions') {
+            console.warn(`Appending lines directly is not standard for node '${nodeId}'. Use setNodeContent.`);
             return;
         }
-        // Create the single child item for all categories
-        const childId = `${nodeId}_content_${this.contentCounter++}`;
-        node.children = [{
+        // Original logic for 'trace' - append as a new child
+        const node = this.findRootNode(nodeId);
+        if (node && node.isCategory && nodeId === 'trace') {
+            const childId = `${nodeId}_content_${this.contentCounter++}`;
+            node.children.push({
                 id: childId,
-                label: childLabel,
-                content: fullContentString, // Store the full content here
+                label: newTextLine,
+                content: newTextLine,
                 children: [],
                 isCategory: false,
-                command: {
-                    command: 'autodebug.showContentWebView', // Central command ID
-                    title: `Show ${childLabel}`, // Command title (used internally/tooltip)
-                    arguments: commandArgs // Pass [content, title]
-                }
-            }];
-        this._onDidChangeTreeData.fire();
+                command: undefined // Ensure appended trace lines have no command
+            });
+            if (updateDescription) {
+                // Update description to reflect total items (lines + potential viewer button later)
+                node.description = `(${node.children.length} items)`;
+            }
+            this._onDidChangeTreeData.fire();
+        }
+        else if (nodeId !== 'trace') {
+            console.warn(`Cannot append to node '${nodeId}'.`);
+        }
+        else {
+            console.warn(`Category node with id "${nodeId}" not found for appending content.`);
+        }
+    }
+    addFinalContentViewer(nodeId) {
+        if (nodeId !== 'trace') {
+            console.warn(`addFinalContentViewer called for non-trace node: ${nodeId}. Ignoring.`);
+            return; // Only applicable to trace for now
+        }
+        const node = this.findRootNode(nodeId);
+        if (!node || !node.isCategory) {
+            console.warn(`Cannot add final viewer: Category node with id "${nodeId}" not found.`);
+            return;
+        }
+        // Check if a viewer button already exists (prevent duplicates)
+        const existingViewer = node.children.find(child => child.command?.command === 'autodebug.showContentWebView');
+        if (existingViewer) {
+            console.warn(`Final viewer button already exists for node: ${nodeId}.`);
+            // Optionally update its content? For now, just return.
+            return;
+        }
+        // Gather content from all existing children (which should be trace lines)
+        const fullTraceContent = node.children
+            .map(child => child.content || '') // Get content, default to empty string if missing
+            .join('\n');
+        if (!fullTraceContent && node.children.length === 0) {
+            console.log(`No content found for node ${nodeId}, skipping final viewer.`);
+            // Optionally add an "(empty)" viewer? Or just do nothing.
+            return;
+        }
+        const childId = `${nodeId}_viewer_${this.contentCounter++}`;
+        const childLabel = "View Full Trace";
+        const viewTitle = "Full Debug Trace";
+        // Create the viewer button data
+        const viewerButton = {
+            id: childId, label: childLabel, content: fullTraceContent, children: [], isCategory: false,
+            icon: new vscode.ThemeIcon('go-to-file'),
+            command: {
+                command: 'autodebug.showContentWebView', title: `Show ${childLabel}`, arguments: [fullTraceContent, viewTitle]
+            }
+        };
+        // Push the viewer button to the end of the children list
+        node.children.push(viewerButton);
+        // Update description if needed (e.g., indicate viewer is available)
+        // node.description = `(${node.children.length -1} lines + Viewer)`; // Example description update
+        this._onDidChangeTreeData.fire(); // Refresh the tree view
     }
     clearNodeContent(nodeId, description) {
         const node = this.findRootNode(nodeId);

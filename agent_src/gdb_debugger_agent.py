@@ -13,12 +13,15 @@ from llama_stack_client.types.agents import Turn # Correct import for the Turn o
 # from llama_stack.distribution.library_client import LlamaStackAsLibraryClient # Commented out as it wasn't fully integrated and requires setup
 from llama_stack.distribution.library_client import LlamaStackAsLibraryClient
 
+import litellm
 
 # Other Imports
 from pygdbmi.gdbcontroller import GdbController
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
+
+litellm.suppress_debug_info = True
 
 # --- Configuration ---
 LLAMA_STACK_URL = "http://localhost:8321"
