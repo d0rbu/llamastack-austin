@@ -57,6 +57,8 @@ class TargetPickerViewProvider {
                 title: 'Debug Target',
                 arguments: [t]
             };
+            item.tooltip = `Run debug target: ${t}`;
+            item.iconPath = new vscode.ThemeIcon('debug-start');
             return item;
         });
         return Promise.resolve(items);

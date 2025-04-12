@@ -20,11 +20,6 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
     readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     // Store the root items for the tree view
-    // private rootItems: DebugTreeItemData[] = [
-    //     { label: "Full trace", content: "Trace details will appear here...", children: [] },
-    //     { label: "Chain of thought", content: "LLM reasoning steps will appear here...", children: [] },
-    //     { label: "Code suggestions etc final thoughts", content: "Suggestions and conclusions will appear here...", children: [] }
-    // ];
     private rootItems: DebugTreeItemData[] = [
         { id: "trace", label: "Full trace", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('list-unordered') },
         { id: "cot", label: "Chain of thought", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('comment-discussion') },

@@ -29,11 +29,6 @@
     ],
     "menus": {
 			"view/title": [
-				{
-					"command": "autodebug.selectBuildTargetAndStart",
-					"when": "view == autodebugView",
-					"group": "navigation@2"
-				},
         {
           "command": "autodebug.selectMakefile", 
           "when": "view == targetPickerView", 
