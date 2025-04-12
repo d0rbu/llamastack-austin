@@ -46,7 +46,7 @@ Another example: `-stack-list-frames`
 If you believe the root cause is likely found (e.g., after identifying a crash location via -stack-list-frames and inspecting relevant variables) or GDB has exited, respond *only* with the word: `DONE`.
 """
 
-console = Console()
+console = Console(color_system=None)
 
 # --- Helper Functions ---
 
