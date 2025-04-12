@@ -47,7 +47,6 @@ class AutoDebugViewProvider {
     // ];
     rootItems = [
         { id: "trace", label: "Full trace", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('list-unordered') },
-        { id: "cot", label: "Chain of thought", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('comment-discussion') },
         { id: "suggestions", label: "Code suggestions etc final thoughts", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('issues') }
     ];
     contentCounter = 0;
@@ -136,7 +135,7 @@ class AutoDebugViewProvider {
             return;
         }
         if (nodeId === 'trace') {
-            // Set trace lines as individual children
+            // Handle trace lines as individual children
             if (!Array.isArray(content)) {
                 console.warn(`Invalid content type for trace node in setNodeContent. Expected string[].`);
                 node.children = [];
@@ -146,16 +145,14 @@ class AutoDebugViewProvider {
             }
             node.children = content.map((line) => {
                 const childId = `${nodeId}_content_${this.contentCounter++}`;
-                // Ensure trace lines have no command associated here
                 return {
                     id: childId, label: line, content: line, children: [], isCategory: false, command: undefined
                 };
             });
             node.description = description ?? (content.length > 0 ? `(${content.length} items)` : "(empty)");
-            // DO NOT add the final viewer here, use addFinalContentViewer for that
         }
-        else if (nodeId === 'cot' || nodeId === 'suggestions') {
-            // Handle CoT and Suggestions as single markdown string displayed via webview
+        else if (nodeId === 'suggestions') { // Simplified condition, only handles suggestions now
+            // Handle Suggestions as single markdown string displayed via webview
             if (typeof content !== 'string') {
                 console.warn(`Invalid content type for ${nodeId} node. Expected string.`);
                 node.children = [];
@@ -165,17 +162,9 @@ class AutoDebugViewProvider {
             }
             const childId = `${nodeId}_content_${this.contentCounter++}`;
             const fullMarkdown = content;
-            let childLabel = "View Content";
-            let viewTitle = "Content";
-            if (nodeId === 'cot') {
-                childLabel = "View Chain of Thought";
-                viewTitle = "Chain of Thought";
-            }
-            if (nodeId === 'suggestions') {
-                childLabel = "View Suggestions";
-                viewTitle = "Suggestions & Final Thoughts";
-            }
-            // Directly set the single child viewer for CoT/Suggestions
+            // Specific labels/titles for suggestions
+            const childLabel = "View Suggestions";
+            const viewTitle = "Suggestions & Final Thoughts";
             node.children = [{
                     id: childId,
                     label: childLabel,
@@ -191,14 +180,14 @@ class AutoDebugViewProvider {
             node.description = description ?? (content ? "(Content available)" : "(empty)");
         }
         else {
-            console.warn(`Unknown nodeId for setNodeContent: ${nodeId}`);
+            console.warn(`Unknown or unsupported nodeId for setNodeContent: ${nodeId}`);
             node.children = [];
             node.description = description ?? "(Unknown node type)";
         }
         this._onDidChangeTreeData.fire();
     }
     appendNodeContentLine(nodeId, newTextLine, updateDescription = true) {
-        if (nodeId === 'cot' || nodeId === 'suggestions') {
+        if (nodeId === 'suggestions') {
             console.warn(`Appending lines directly is not standard for node '${nodeId}'. Use setNodeContent.`);
             return;
         }
@@ -258,16 +247,10 @@ class AutoDebugViewProvider {
         const viewTitle = "Full Debug Trace";
         // Create the viewer button data
         const viewerButton = {
-            id: childId,
-            label: childLabel,
-            content: fullTraceContent, // Store full content for tooltip/command
-            children: [],
-            isCategory: false,
-            icon: new vscode.ThemeIcon('go-to-file'), // Explicitly set viewer icon
+            id: childId, label: childLabel, content: fullTraceContent, children: [], isCategory: false,
+            icon: new vscode.ThemeIcon('go-to-file'),
             command: {
-                command: 'autodebug.showContentWebView',
-                title: `Show ${childLabel}`,
-                arguments: [fullTraceContent, viewTitle]
+                command: 'autodebug.showContentWebView', title: `Show ${childLabel}`, arguments: [fullTraceContent, viewTitle]
             }
         };
         // Push the viewer button to the end of the children list

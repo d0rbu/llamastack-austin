@@ -36,64 +36,17 @@ export function activate(context: vscode.ExtensionContext) {
             { location: vscode.ProgressLocation.Notification, title: `Debugging ${target}...` },
             async (progress, token) => {
                 try {
-                    // progress.report({ increment: 0 });
-
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "trace",
-                    //     [],
-                    //     "Debugging"
-                    // );
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "cot",
-                    //     [],
-                    //     "Waiting to finish debugging"
-                    // );
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "suggestions",
-                    //     [],
-                    //     "Waiting to finish debugging"
-                    // );
-                    // const result = await backend.debugTarget(target) as DebugResponse;
-
-                    // // wait 5 seconds
-                    // await new Promise(resolve => setTimeout(resolve, 5000));
-
-					// const traceLines = (result.trace || "No trace received.").split('\n');
-					// const cotLines = (result.cot || "No CoT received.").split('\n');
-                    // const suggestionLines = (result.answer || "No suggestions received.").split('\n');
-                    
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "trace",
-                    //     traceLines,
-                    //     `${traceLines.length} trace lines`
-                    // );
-
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "cot",
-                    //     cotLines,
-                    //     `${cotLines.length} reasoning steps`
-                    // );
-
-                    // autoDebugViewProvider.setNodeContent(
-                    //     "suggestions",
-                    //     suggestionLines,
-                    //     "Ready"
-                    // )
-
-                    // progress.report({ increment: 100, message: "Debugging complete!" });
 					progress.report({ increment: 0 });
                     autoDebugViewProvider.clearAllNodes("Debugging in progress...");
 
                     // Set initial descriptions indicating process start
                     autoDebugViewProvider.updateNodeDescription("trace", "Running debug...");
-                    autoDebugViewProvider.updateNodeDescription("cot", "Running debug...");
                     autoDebugViewProvider.updateNodeDescription("suggestions", "Running debug...");
 
                     const result = await backend.debugTarget(target) as DebugResponse;
 
                     // Process results
 					const traceContent = result.trace || ""; // Default to empty string
-					const cotContent = result.cot || "No CoT received.";
                     const suggestionContent = result.answer || "No suggestions received.";
 
                     // Split trace into lines for individual tree items
@@ -112,14 +65,6 @@ export function activate(context: vscode.ExtensionContext) {
                          // Optionally update description again after adding viewer
                          autoDebugViewProvider.updateNodeDescription("trace", `(${traceLines.length} lines + Viewer)`);
                     }
-
-
-                    // Set the CoT content (creates its viewer directly)
-                    autoDebugViewProvider.setNodeContent(
-                        "cot",
-                        cotContent,
-                        cotContent ? "Content available" : "(empty)"
-                    );
 
                     // Set the Suggestions content (creates its viewer directly)
                     autoDebugViewProvider.setNodeContent(
