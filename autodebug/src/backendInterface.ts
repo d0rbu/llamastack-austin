@@ -143,10 +143,9 @@ export class BackendInterface {
             if (!answerRes.ok) {
                 throw new Error(`Failed to fetch final answer: ${answerRes.statusText}`);
             }
-    
-            let answerText = '';
+
+            const answerText = await answerRes.text();
             try {
-                const answerText = await answerRes.text();
                 if (answerText.trim() === '') {
                     yield {
                         type: 'answer',
@@ -157,11 +156,11 @@ export class BackendInterface {
             } catch (e) {
                 vscode.window.showErrorMessage(`Error parsing final answer: ${e}`);
             }
-    
+
             // Yield the final answer as a DebugResponse of type 'answer'
             yield {
                 type: 'answer',
-                content: answerText || 'No final answer available' // Assuming the answer is in answerData.answer
+                content: answerText
             };
     
         } catch (err) {
