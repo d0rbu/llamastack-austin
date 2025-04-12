@@ -59,18 +59,29 @@ class TargetPickerViewProvider {
             };
             return item;
         });
-        const selectMakefileItem = new vscode.TreeItem("Select Makefile", vscode.TreeItemCollapsibleState.None);
-        selectMakefileItem.command = {
-            command: 'autodebug.selectMakefile',
-            title: 'Select Makefile'
-        };
-        selectMakefileItem.tooltip = "Choose a Makefile to analyze build targets";
-        selectMakefileItem.iconPath = new vscode.ThemeIcon('file');
-        return Promise.resolve([...items, selectMakefileItem]);
+        return Promise.resolve(items);
     }
     async loadTargets(makefilePath) {
-        const targetList = await this.backend.fetchBuildTargets(makefilePath);
-        this.targets = targetList;
+        try {
+            const targetList = await this.backend.fetchBuildTargets(makefilePath);
+            if (targetList && targetList.length > 0) {
+                this.targets = targetList;
+            }
+            else {
+                this.targets = ["No build targets found in selected Makefile."];
+            }
+            this._onDidChangeTreeData.fire();
+        }
+        catch (error) {
+            console.error("Error fetching build targets:", error);
+            this.targets = ["Error fetching targets."];
+            vscode.window.showErrorMessage(`Error fetching targets: ${error}`);
+            this._onDidChangeTreeData.fire();
+        }
+    }
+    // Add a method to clear targets, maybe called before loading new ones
+    clearTargets() {
+        this.targets = ["Click 'Select Makefile' button above..."];
         this._onDidChangeTreeData.fire();
     }
 }

@@ -22,9 +22,9 @@
         "title": "Start Auto Debugging"
       },
       {
-        "command": "autodebug.selectBuildTargetAndStart",
-				"title": "Auto Debug: Select Build Target & Start",
-				"icon": "$(file-code)"
+        "command": "autodebug.selectMakefile",
+        "title": "Select Makefile",
+        "icon": "$(folder-opened)"
       }
     ],
     "menus": {
@@ -33,7 +33,12 @@
 					"command": "autodebug.selectBuildTargetAndStart",
 					"when": "view == autodebugView",
 					"group": "navigation@2"
-				}
+				},
+        {
+          "command": "autodebug.selectMakefile", 
+          "when": "view == targetPickerView", 
+          "group": "navigation@1"
+        }
 			]
 		},
     "viewsContainers": {
