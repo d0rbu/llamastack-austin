@@ -123,9 +123,10 @@ async def get_summary():
     second_idx = full_output.find(delimiter, first_idx + len(delimiter))
     if second_idx == -1:
         return PlainTextResponse("No summary found. Second delimiter not present.")
-    
+
     # Extract content between the two delimiters.
     summary = full_output[first_idx + len(delimiter):second_idx].strip()
+    print(summary)
     return PlainTextResponse(summary)
 
 if __name__ == "__main__":

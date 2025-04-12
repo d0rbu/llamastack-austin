@@ -29,57 +29,6 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
-    //     const backend = new BackendInterface(context);
-
-    //     vscode.window.withProgress(
-    //         { location: vscode.ProgressLocation.Notification, title: `Debugging ${target}...` },
-    //         async (progress, token) => {
-    //             try {
-	// 				progress.report({ increment: 0 });
-    //                 autoDebugViewProvider.clearAllNodes("Debugging in progress...");
-
-    //                 // Set initial descriptions indicating process start
-    //                 autoDebugViewProvider.updateNodeDescription("trace", "Running debug...");
-    //                 autoDebugViewProvider.updateNodeDescription("suggestions", "Running debug...");
-
-    //                 const result = await backend.debugTarget(target) as DebugResponse;
-
-    //                 // Process results
-	// 				const traceContent = result.trace || ""; // Default to empty string
-    //                 const suggestionContent = result.answer || "No suggestions received.";
-
-    //                 // Split trace into lines for individual tree items
-    //                 const traceLines = traceContent ? traceContent.split('\n') : []; // Handle empty trace
-
-    //                 // Set the individual trace lines first
-    //                 autoDebugViewProvider.setNodeContent(
-    //                     "trace",
-    //                     traceLines,
-    //                     traceLines.length > 0 ? `(${traceLines.length} lines)` : "(empty)"
-    //                 );
-
-    //                 // Now, add the final viewer button for the trace
-    //                 if (traceLines.length > 0) {
-    //                     autoDebugViewProvider.addFinalContentViewer("trace");
-    //                      // Optionally update description again after adding viewer
-    //                      autoDebugViewProvider.updateNodeDescription("trace", `(${traceLines.length} lines + Viewer)`);
-    //                 }
-
-    //                 // Set the Suggestions content (creates its viewer directly)
-    //                 autoDebugViewProvider.setNodeContent(
-    //                     "suggestions",
-    //                     suggestionContent,
-    //                     suggestionContent ? "Content available" : "(empty)"
-    //                 );
-
-    //                 progress.report({ increment: 100, message: "Debugging complete!" });
-    //             } catch (err) {
-    //                 vscode.window.showErrorMessage(`Debugging failed: ${err}`);
-    //             }
-    //         }
-    //     );
-    // });
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
         const backend = new BackendInterface(context);
         
@@ -116,32 +65,27 @@ export function activate(context: vscode.ExtensionContext) {
                     // Iterate over the async generator to process each DebugResponse
                     for await (const result of debugStream) {
                         if (result.type === 'trace') {
-                            // If we're already in the trace section, continue adding lines
-                            if (currentSection === 'trace') {
-                                traceLines.push(result.content);
-                                autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
-                            }
+                            traceLines.push(result.content);
+                            autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
                         } else if (result.type === 'answer') {
                             // Once we hit 'answer', finish the cot section and display it in the webview
                             if (currentSection === 'trace') {
                                 currentSection = 'answer';  // Switch to answer section
-                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
                                 autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
                                 // Display trace in webview as markdown
                                 const traceContent = traceLines.join('\n');
                                 vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
                                 progress.report({ increment: 50, message: "Trace complete!" });
                             }
-    
-                            
-                            autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, "Compiling suggestions");
+
+                            suggestionContent += result.content;
+                            autoDebugViewProvider.setNodeContent("suggestions", [], "Compiling suggestions");
                         }
                     }
     
                     // Final updates after the stream has finished
                     autoDebugViewProvider.setNodeContent("suggestions", suggestionContent, "Ready");
                     progress.report({ increment: 100, message: "Debugging complete!" });
-    
                 } catch (err) {
                     vscode.window.showErrorMessage(`Debugging failed: ${err}`);
                 }
