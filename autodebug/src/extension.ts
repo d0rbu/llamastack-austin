@@ -81,113 +81,95 @@ export function activate(context: vscode.ExtensionContext) {
     //     );
     // });
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target: string) => {
-        // --- Start Test Simulation ---
-        // Temporarily bypass the actual backend call for testing
-        // const backend = new BackendInterface(context);
-
+        const backend = new BackendInterface(context);
+        
+        const bugDescription = await vscode.window.showInputBox({
+            prompt: 'Describe the bug or unexpected behavior you are encountering.',
+            placeHolder: 'e.g., segfault when input is empty'
+        });
+    
+        if (!bugDescription) {
+            vscode.window.showWarningMessage('Debugging canceled: no bug description provided.');
+            return;
+        }
+    
         vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: `Simulating Debug for ${target}...` },
             async (progress, token) => {
                 try {
-					progress.report({ increment: 0, message: "Starting simulation..." });
-                    autoDebugViewProvider.clearAllNodes("Simulation in progress...");
-
-                    // Set initial descriptions
-                    autoDebugViewProvider.updateNodeDescription("trace", "Simulating trace...");
-                    autoDebugViewProvider.updateNodeDescription("suggestions", "Awaiting simulation...");
-
-                    // 1. Simulate streaming trace lines
-                    const simulatedTraceLines = [
-                        "Starting process...",
-                        "Reading config file `/etc/app.conf`...",
-                        "Connecting to database `main_db`...",
-                        "Executing query `SELECT * FROM users WHERE id = 123;`...",
-                        "Processing results (found 1 record)...",
-                        "Error: Network timeout on service `auth_service`.",
-                        "Retrying connection...",
-                        "Failed to connect after 3 retries.",
-                        "Exiting process with error code 5."
-                    ];
-
-                    // Clear existing trace content before starting append simulation
-                    autoDebugViewProvider.clearNodeContent("trace", "Simulating lines...");
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Short delay
-
-                    for (let i = 0; i < simulatedTraceLines.length; i++) {
-                        if (token.isCancellationRequested) {
-                             vscode.window.showInformationMessage("Simulation cancelled.");
-                             autoDebugViewProvider.clearAllNodes("Simulation cancelled.");
-                             return;
+                    progress.report({ increment: 0 });
+    
+                    // Initialize the node content
+                    autoDebugViewProvider.setNodeContent("trace", [], "Debugging");
+                    autoDebugViewProvider.setNodeContent("cot", [], "Waiting to finish debugging");
+                    autoDebugViewProvider.setNodeContent("suggestions", [], "Waiting to finish debugging");
+    
+                    // Buffers for the incoming streams
+                    const traceLines: string[] = [];
+                    const cotLines: string[] = [];
+                    const suggestionLines: string[] = [];
+    
+                    // Track the current stream state
+                    let currentSection: 'trace' | 'cot' | 'answer' = 'trace';
+    
+                    // Call the backend method to start debugging and get the stream
+                    const debugStream = backend.debugTarget(target, bugDescription);
+    
+                    // Iterate over the async generator to process each DebugResponse
+                    for await (const result of debugStream) {
+                        if (result.type === 'trace') {
+                            // If we're already in the trace section, continue adding lines
+                            if (currentSection === 'trace') {
+                                traceLines.push(result.content);
+                                autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
+                            }
+                        } else if (result.type === 'cot') {
+                            // When switching to 'cot', finish the trace section and display it in the webview
+                            if (currentSection === 'trace') {
+                                currentSection = 'cot';  // Switch to cot section
+                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
+                                // Display trace in webview as markdown
+                                const traceContent = traceLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
+                                progress.report({ increment: 33, message: "Trace complete!" });
+                            }
+    
+                            cotLines.push(result.content);
+                            autoDebugViewProvider.setNodeContent("cot", cotLines, `${cotLines.length} reasoning steps`);
+                        } else if (result.type === 'answer') {
+                            // Once we hit 'answer', finish the cot section and display it in the webview
+                            if (currentSection === 'cot') {
+                                currentSection = 'answer';  // Switch to answer section
+                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
+                                // Display cot in webview as markdown
+                                const cotContent = cotLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', cotContent, 'Chain of Thought');
+                                progress.report({ increment: 66, message: "Reasoning complete!" });
+                            } else if (currentSection === 'trace') {
+                                currentSection = 'answer';  // Switch to answer section
+                                autoDebugViewProvider.setNodeContent("cot", [], "Finished reasoning");
+                                autoDebugViewProvider.setNodeContent("trace", [], "Finished tracing");
+                                // Display trace in webview as markdown
+                                const traceContent = traceLines.join('\n');
+                                vscode.commands.executeCommand('autodebug.showContentWebView', traceContent, 'Trace');
+                                progress.report({ increment: 50, message: "Trace complete!" });
+                            }
+    
+                            suggestionLines.push(result.content);
+                            autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Compiling suggestions");
                         }
-                        const line = simulatedTraceLines[i];
-                        autoDebugViewProvider.appendNodeContentLine("trace", line);
-                        progress.report({ increment: (1 / (simulatedTraceLines.length + 2)) * 100 , message: `Trace line ${i+1}` }); // Adjust progress incrementally
-                        await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay between lines
                     }
-
-                    // 2. Add the final trace viewer
-                    autoDebugViewProvider.addFinalContentViewer("trace");
-                    autoDebugViewProvider.updateNodeDescription("trace", `(${simulatedTraceLines.length} lines + Viewer)`);
-                    progress.report({ increment: (1 / (simulatedTraceLines.length + 2)) * 100, message: "Trace viewer added." });
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Delay before showing suggestions
-
-                    // 3. Simulate suggestions content
-                    const simulatedSuggestions = `## Analysis
-
-The trace indicates a **network timeout** when trying to reach the \`auth_service\`. This happened after successfully connecting to the database and processing a query.
-
-**Possible Causes:**
-
-*   **Network Issue:** Firewall blocking the connection, DNS resolution failure, or general network instability between the application server and the auth service.
-*   **Auth Service Down:** The \`auth_service\` itself might be unavailable or overloaded.
-*   **Incorrect Configuration:** The application might have an incorrect address or port configured for the \`auth_service\`.
-
-**Recommendations:**
-
-1.  **Check Network Connectivity:** Verify network path and firewall rules between the application host and the \`auth_service\` host. Use tools like \`ping\` or \`traceroute\`.
-2.  **Verify Auth Service Status:** Check if the \`auth_service\` is running and responsive. Look at its logs for any errors.
-3.  **Review Configuration:** Double-check the configuration files (\`e.g., /etc/app.conf\`) for the correct address/hostname and port for \`auth_service\`.
-4.  **Implement Retry Logic (with backoff):** While retries were attempted, consider implementing exponential backoff to avoid overwhelming the service if it's temporarily overloaded.
-
-\`\`\`typescript
-// Example retry logic
-async function connectWithRetry(attempt = 1) {
-  const MAX_RETRIES = 5;
-  const INITIAL_DELAY = 500; // ms
-  try {
-    await connectToAuthService();
-    console.log("Connected successfully!");
-  } catch (error) {
-    if (attempt <= MAX_RETRIES) {
-      const delay = INITIAL_DELAY * Math.pow(2, attempt - 1);
-      console.warn(\`Connection attempt \${attempt} failed. Retrying in \${delay}ms...\`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      await connectWithRetry(attempt + 1);
-    } else {
-      console.error("Max retries reached. Could not connect.");
-      throw error; // Re-throw final error
-    }
-  }
-}
-\`\`\`
-`;
-                    autoDebugViewProvider.setNodeContent(
-                        "suggestions",
-                        simulatedSuggestions,
-                        "Suggestions ready"
-                    );
-                    progress.report({ increment: (1 / (simulatedTraceLines.length + 2)) * 100, message: "Suggestions ready." });
-
-
-                    progress.report({ increment: 100, message: "Simulation complete!" });
-                } catch (err: any) { // Added type annotation
-                    vscode.window.showErrorMessage(`Simulation failed: ${err?.message || err}`);
-                    autoDebugViewProvider.clearAllNodes("Simulation failed.");
+    
+                    // Final updates after the stream has finished
+                    autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Ready");
+                    progress.report({ increment: 100, message: "Debugging complete!" });
+    
+                } catch (err) {
+                    vscode.window.showErrorMessage(`Debugging failed: ${err}`);
                 }
             }
         );
-        // --- End Test Simulation ---
-    });
+    });     
 
 	const showContentWebViewCommand = vscode.commands.registerCommand('autodebug.showContentWebView', (content: string, title: string) => {
         // Create and show a new webview panel

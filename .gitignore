@@ -6,3 +6,4 @@ agent_src/test_executables/test_1
 agent_src/test_executables/test_2
 agent_src/test_executables/test_3
 agent_src/test_executables/test_4
+.venv
