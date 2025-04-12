@@ -25,19 +25,21 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "autodebug-activitybar",
-          "title": "Auto Debug",
+          "id": "autodebug",
+          "title": "AutoDebug",
           "icon": "$(debug)"
         }
       ]
     },
     "views": {
-      "autodebug-activitybar": [
+      "autodebug": [
         {
           "id": "autodebugView",
-          "name": "Debugger Output",
-          "type": "tree",
-          "icon": "$(debug)"
+          "name": "Debug Log"
+        },
+        {
+          "id": "targetPickerView",
+          "name": "Target Picker"
         }
       ]
     }
