@@ -126,7 +126,6 @@ async def get_summary():
 
     # Extract content between the two delimiters.
     summary = full_output[first_idx + len(delimiter):second_idx].strip()
-    print(summary)
     return PlainTextResponse(summary)
 
 if __name__ == "__main__":
