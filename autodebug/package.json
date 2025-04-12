@@ -80,6 +80,7 @@
   },
   "dependencies": {
     "markdown-it": "^14.1.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "strip-ansi": "^7.1.0"
   }
 }

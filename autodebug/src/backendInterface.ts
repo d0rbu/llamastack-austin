@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
+import * as readline from 'readline';
+let stripAnsi: any;
+(async () => {
+    stripAnsi = (await import('strip-ansi')).default;
+})();
 let fetch: any;
 (async () => {
     fetch = (await import('node-fetch')).default;
 })();
-const BACKEND_URL = 'http://localhost:8000';
+const BACKEND_URL = 'http://192.168.0.41:8000';
 
 export interface DebugResponse {
     type: 'trace' | 'cot' | 'answer';
@@ -11,7 +16,7 @@ export interface DebugResponse {
 }
 
 export class BackendInterface {
-    private mock = true;
+    private mock = false;
 
     constructor(private context: vscode.ExtensionContext) {}
 
@@ -103,39 +108,33 @@ export class BackendInterface {
             const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ target })
+                body: JSON.stringify({ 
+                    executable: target,
+                    bug_description: bugDescription,
+                })
             });
     
             if (!res.ok || !res.body) {
                 throw new Error(`Failed to debug target: ${res.statusText}`);
             }
-    
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-    
-            // Read and process the stream of trace, cot, and answer
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-    
-                buffer += decoder.decode(value, { stream: true });
-    
-                let newlineIndex;
-                while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-                    const line = buffer.slice(0, newlineIndex).trim();
-                    buffer = buffer.slice(newlineIndex + 1);
-                    if (!line) continue;
-    
-                    try {
-                        const parsed = JSON.parse(line);
-                        yield parsed as DebugResponse;
-                    } catch (e) {
-                        vscode.window.showWarningMessage(`Non-JSON line received: ${line}`);
-                    }
+
+            const rl = readline.createInterface({
+                input: res.body as NodeJS.ReadableStream,
+                crlfDelay: Infinity
+            });
+            
+            for await (const line of rl) {
+                const trimmed = stripAnsi(line.trim());
+                if (!trimmed) continue;
+            
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    yield parsed as DebugResponse;
+                } catch (e) {
+                    vscode.window.showWarningMessage(`Non-JSON line received: ${trimmed}`);
                 }
             }
-    
+
             // Once the stream finishes, make a request to get the final answer
             const answerRes = await fetch(finalAnswerEndpoint, {
                 method: 'GET', // Assuming GET for fetching the final answer
@@ -145,7 +144,18 @@ export class BackendInterface {
                 throw new Error(`Failed to fetch final answer: ${answerRes.statusText}`);
             }
     
-            const answerData = await answerRes.json();
+            try {
+                const answerText = await answerRes.text();
+                if (answerText.trim() === '') {
+                    yield {
+                        type: 'answer',
+                        content: 'No final answer available'
+                    };
+                    return;
+                }
+            } catch (e) {
+                vscode.window.showErrorMessage(`Error parsing final answer: ${e}`);
+            }
     
             // Yield the final answer as a DebugResponse of type 'answer'
             yield {
