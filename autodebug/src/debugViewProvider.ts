@@ -6,6 +6,8 @@ interface DebugTreeItemData {
     content: string; // Content for this specific node
     children?: DebugTreeItemData[]; // For potential future nesting
 }
+import * as vscode from 'vscode';
+import { BackendInterface } from './backendInterface';
 
 export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 

@@ -12,6 +12,7 @@ export interface DebugResponse {
 }
 
 export class BackendInterface {
+    private mock = true;
 
     constructor(private context: vscode.ExtensionContext) {}
 
@@ -21,6 +22,10 @@ export class BackendInterface {
      * @returns Array of build target strings
      */
     async fetchBuildTargets(makefilePath: string): Promise<string[]> {
+        if (this.mock) {
+            return this.mockFetchBuildTargets();
+        }
+
         try {
             const res = await fetch(`${BACKEND_URL}/analyze_makefile`, {
                 method: 'POST',
@@ -46,6 +51,10 @@ export class BackendInterface {
      * @returns An object containing trace, chain-of-thought, and answer
      */
     async debugTarget(target: string): Promise<DebugResponse | null> {
+        if (this.mock) {
+            return this.mockDebugTarget(target);
+        }
+
         try {
             const res = await fetch(`${BACKEND_URL}/debug_target`, {
                 method: 'POST',

@@ -42,6 +42,7 @@ let fetch;
 const BACKEND_URL = 'http://localhost:8000';
 class BackendInterface {
     context;
+    mock = true;
     constructor(context) {
         this.context = context;
     }
@@ -51,6 +52,9 @@ class BackendInterface {
      * @returns Array of build target strings
      */
     async fetchBuildTargets(makefilePath) {
+        if (this.mock) {
+            return this.mockFetchBuildTargets();
+        }
         try {
             const res = await fetch(`${BACKEND_URL}/analyze_makefile`, {
                 method: 'POST',
@@ -74,6 +78,9 @@ class BackendInterface {
      * @returns An object containing trace, chain-of-thought, and answer
      */
     async debugTarget(target) {
+        if (this.mock) {
+            return this.mockDebugTarget(target);
+        }
         try {
             const res = await fetch(`${BACKEND_URL}/debug_target`, {
                 method: 'POST',
