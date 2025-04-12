@@ -61,20 +61,43 @@ function activate(context) {
     });
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target) => {
         const backend = new backendInterface_1.BackendInterface(context);
+        const bugDescription = await vscode.window.showInputBox({
+            prompt: 'Describe the bug or unexpected behavior you are encountering.',
+            placeHolder: 'e.g., segfault when input is empty'
+        });
+        if (!bugDescription) {
+            vscode.window.showWarningMessage('Debugging canceled: no bug description provided.');
+            return;
+        }
         vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Debugging ${target}...` }, async (progress, token) => {
             try {
                 progress.report({ increment: 0 });
+                // Initialize the node content
                 autoDebugViewProvider.setNodeContent("trace", [], "Debugging");
                 autoDebugViewProvider.setNodeContent("cot", [], "Waiting to finish debugging");
                 autoDebugViewProvider.setNodeContent("suggestions", [], "Waiting to finish debugging");
-                const result = await backend.debugTarget(target);
-                // wait 5 seconds
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                const traceLines = (result.trace || "No trace received.").split('\n');
-                const cotLines = (result.cot || "No CoT received.").split('\n');
-                const suggestionLines = (result.answer || "No suggestions received.").split('\n');
-                autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
-                autoDebugViewProvider.setNodeContent("cot", cotLines, `${cotLines.length} reasoning steps`);
+                // Buffers for the incoming streams
+                const traceLines = [];
+                const cotLines = [];
+                const suggestionLines = [];
+                // Call the backend method to start debugging and get the stream
+                const debugStream = backend.debugTarget(target, bugDescription);
+                // Iterate over the async generator to process each DebugResponse
+                for await (const result of debugStream) {
+                    if (result.type === 'trace') {
+                        traceLines.push(result.content);
+                        autoDebugViewProvider.setNodeContent("trace", traceLines, `${traceLines.length} trace lines`);
+                    }
+                    else if (result.type === 'cot') {
+                        cotLines.push(result.content);
+                        autoDebugViewProvider.setNodeContent("cot", cotLines, `${cotLines.length} reasoning steps`);
+                    }
+                    else if (result.type === 'answer') {
+                        suggestionLines.push(result.content);
+                        autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Compiling suggestions");
+                    }
+                }
+                // Final updates after the stream has finished
                 autoDebugViewProvider.setNodeContent("suggestions", suggestionLines, "Ready");
                 progress.report({ increment: 100, message: "Debugging complete!" });
             }

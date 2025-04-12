@@ -20,11 +20,6 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
     readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     // Store the root items for the tree view
-    // private rootItems: DebugTreeItemData[] = [
-    //     { label: "Full trace", content: "Trace details will appear here...", children: [] },
-    //     { label: "Chain of thought", content: "LLM reasoning steps will appear here...", children: [] },
-    //     { label: "Code suggestions etc final thoughts", content: "Suggestions and conclusions will appear here...", children: [] }
-    // ];
     private rootItems: DebugTreeItemData[] = [
         { id: "trace", label: "Full trace", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('list-unordered') },
         { id: "cot", label: "Chain of thought", description: "Awaiting debug process...", children: [], isCategory: true, icon: new vscode.ThemeIcon('comment-discussion') },
@@ -48,21 +43,6 @@ export class AutoDebugViewProvider implements vscode.TreeDataProvider<vscode.Tre
         item.iconPath = data.icon;
         item.description = data.description;
         item.command = data.command;
-        // switch (data.label) {
-        //     case "Full trace":
-        //         item.iconPath = new vscode.ThemeIcon('list-unordered'); // Or 'checklist', 'references'
-        //         break;
-        //     case "Chain of thought":
-        //         item.iconPath = new vscode.ThemeIcon('comment-discussion'); // Or 'hubot', 'lightbulb'
-        //         break;
-        //     case "Code suggestions etc final thoughts":
-        //         item.iconPath = new vscode.ThemeIcon('issues'); // Or 'lightbulb-autofix', 'beaker'
-        //         break;
-        //     default:
-        //         // Optional: default icon
-        //         item.iconPath = new vscode.ThemeIcon('circle-outline');
-        // }
-        // return item;
         if (!data.isCategory) {
             // For regular trace lines
             if (!item.command) { // Don't override formatting for command items

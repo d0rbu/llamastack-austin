@@ -6,9 +6,8 @@ let fetch: any;
 const BACKEND_URL = 'http://localhost:8000';
 
 export interface DebugResponse {
-    trace: string;
-    cot: string;
-    answer: string;
+    type: 'trace' | 'cot' | 'answer';
+    content: string;
 }
 
 export class BackendInterface {
@@ -46,39 +45,10 @@ export class BackendInterface {
     }
 
     /**
-     * Starts debugging a specific build target and retrieves results.
-     * @param target The build target to debug
-     * @returns An object containing trace, chain-of-thought, and answer
-     */
-    async debugTarget(target: string): Promise<DebugResponse | null> {
-        if (this.mock) {
-            return this.mockDebugTarget(target);
-        }
-
-        try {
-            const res = await fetch(`${BACKEND_URL}/debug_target`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ target })
-            });
-
-            if (!res.ok) {
-                throw new Error(`Failed to debug target: ${res.statusText}`);
-            }
-
-            const data = await res.json() as DebugResponse;
-            return data;
-        } catch (err) {
-            vscode.window.showErrorMessage(`Error debugging target: ${err}`);
-            return null;
-        }
-    }
-
-    /**
      * Mock method for testing without backend
      */
-    async mockDebugTarget(target: string): Promise<DebugResponse> {
-        return {
+    async *mockDebugTarget(target: string): AsyncGenerator<DebugResponse, void, unknown> {
+        const output = {
             trace: `'${target}' running on gdb\n\n` +
                 `Breakpoint 1, main () at main.c:10\n` +
                 `10\tint main() {\n` +
@@ -87,6 +57,87 @@ export class BackendInterface {
             cot: `We began by building the target '${target}'.\nCompilation and linking succeeded with no errors.`,
             answer: `The issue with the target '${target}' was due to a missing header file.`
         };
+    
+        for (const line of output.trace.split('\n')) {
+            yield {
+                type: 'trace',
+                content: line
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        for (const line of output.cot.split('\n')) {
+            yield {
+                type: 'cot',
+                content: line
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        for (const line of output.answer.split('\n')) {
+            yield {
+                type: 'answer',
+                content: line
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        return;
+    }
+
+    /**
+     * Starts debugging a specific build target and retrieves results.
+     * @param target The build target to debug
+     * @returns An object containing trace, chain-of-thought, and answer
+     */
+    async *debugTarget(target: string, bugDescription: string): AsyncGenerator<DebugResponse, void, unknown> {
+        if (this.mock) {
+            for await (const response of this.mockDebugTarget(target)) {
+                yield response;
+            }
+            return;
+        }
+
+        const endpoint = `${BACKEND_URL}/debug_target`;
+
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target })
+            });
+
+            if (!res.ok || !res.body) {
+                throw new Error(`Failed to debug target: ${res.statusText}`);
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                let newlineIndex;
+                while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+                    const line = buffer.slice(0, newlineIndex).trim();
+                    buffer = buffer.slice(newlineIndex + 1);
+                    if (!line) continue;
+
+                    try {
+                        const parsed = JSON.parse(line);
+                        yield parsed as DebugResponse;
+                    } catch (e) {
+                        vscode.window.showWarningMessage(`Non-JSON line received: ${line}`);
+                    }
+                }
+            }
+        } catch (err) {
+            vscode.window.showErrorMessage(`Error debugging target: ${err}`);
+        }
     }
 
     async mockFetchBuildTargets(): Promise<string[]> {
