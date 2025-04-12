@@ -1,0 +1,19 @@
+version: 2
+apis:
+  - inference
+
+providers:
+  inference:
+    - provider_id: groq
+      provider_type: remote::openai
+      config:
+        api_base: "https://api.groq.com/openai/v1"
+        api_key: "${env.GROQ_API_KEY}"
+
+models:
+  - model_id: "llama3-70b-8192"
+    provider_id: groq
+    provider_model_id: "llama3-70b-8192"
+    metadata:
+      description: "Groq-hosted Llama 3 70B model"
+
