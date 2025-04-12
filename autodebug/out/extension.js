@@ -38,6 +38,7 @@ exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
 const debugViewProvider_1 = require("./debugViewProvider");
 const targetPickerViewProvider_1 = require("./targetPickerViewProvider");
+const backendInterface_1 = require("./backendInterface");
 function activate(context) {
     const autoDebugViewProvider = new debugViewProvider_1.AutoDebugViewProvider(context);
     vscode.window.registerTreeDataProvider('autodebugView', autoDebugViewProvider);
@@ -60,8 +61,19 @@ function activate(context) {
         }
     });
     const debugTargetCommand = vscode.commands.registerCommand('autodebug.debugTarget', async (target) => {
+        const backend = new backendInterface_1.BackendInterface(context);
+        vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: `Debugging ${target}...` }, async () => {
+            try {
+                const result = await backend.debugTarget(target);
+                autoDebugViewProvider.updateNodeContent("Full trace", result.trace);
+                autoDebugViewProvider.updateNodeContent("Chain of thought", result.cot);
+                autoDebugViewProvider.updateNodeContent("Code suggestions etc final thoughts", result.answer);
+            }
+            catch (err) {
+                vscode.window.showErrorMessage(`Debugging failed: ${err}`);
+            }
+        });
         vscode.window.showInformationMessage(`Debugging target: ${target}`);
-        // You can trigger actual debugging here
     });
     context.subscriptions.push(selectMakefileCommand, debugTargetCommand);
 }
