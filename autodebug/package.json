@@ -20,8 +20,27 @@
       {
         "command": "autodebug.startDebugging",
         "title": "Start Auto Debugging"
+      },
+      {
+        "command": "autodebug.selectMakefile",
+        "title": "Select Makefile",
+        "icon": "$(folder-opened)"
       }
     ],
+    "menus": {
+			"view/title": [
+				{
+					"command": "autodebug.selectBuildTargetAndStart",
+					"when": "view == autodebugView",
+					"group": "navigation@2"
+				},
+        {
+          "command": "autodebug.selectMakefile", 
+          "when": "view == targetPickerView", 
+          "group": "navigation@1"
+        }
+			]
+		},
     "viewsContainers": {
       "activitybar": [
         {
