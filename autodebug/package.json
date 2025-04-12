@@ -20,8 +20,22 @@
       {
         "command": "autodebug.startDebugging",
         "title": "Start Auto Debugging"
+      },
+      {
+        "command": "autodebug.selectBuildTargetAndStart",
+				"title": "Auto Debug: Select Build Target & Start",
+				"icon": "$(file-code)"
       }
     ],
+    "menus": {
+			"view/title": [
+				{
+					"command": "autodebug.selectBuildTargetAndStart",
+					"when": "view == autodebugView",
+					"group": "navigation@2"
+				}
+			]
+		},
     "viewsContainers": {
       "activitybar": [
         {

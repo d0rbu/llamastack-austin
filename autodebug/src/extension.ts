@@ -19,30 +19,49 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposable);
 
-	let startDebuggingCommand = vscode.commands.registerCommand('autodebug.startDebugging', async () => {
-		const relativeMakefilePath = 'agent_src/test_executables/Makefile';
+	let selectAndStartCommand = vscode.commands.registerCommand('autodebug.selectBuildTargetAndStart', async () => {
 		const workspaceFolders = vscode.workspace.workspaceFolders;
 		if (!workspaceFolders || workspaceFolders.length === 0) {
-			vscode.window.showErrorMessage('No workspace folder open. Please open the directory containing "autodebug" and "sample".');
+			vscode.window.showErrorMessage('No workspace folder open. Please open a workspace first.');
 			return;
 		}
-		autoDebugViewProvider.updateNodeContent("Full trace", `Debugging started with: ${path.basename(relativeMakefilePath)}`);
-
 		const workspaceRootUri = workspaceFolders[0].uri;
-		const makefileUri = vscode.Uri.joinPath(workspaceRootUri, relativeMakefilePath);
-		const makefilePath = makefileUri.fsPath;
+		const openDialogOptions: vscode.OpenDialogOptions = {
+            canSelectMany: false,
+            openLabel: 'Select Build Target',
+            // defaultUri: workspaceRootUri, // Optional: Start in workspace root
+            canSelectFiles: true,
+            canSelectFolders: false
+        };
+		const fileUriArray = await vscode.window.showOpenDialog(openDialogOptions);
 
-		vscode.window.showInformationMessage(`Using Makefile: ${makefilePath}`);
-		console.log(`Using Makefile path: ${makefilePath}`);
+        if (!fileUriArray || fileUriArray.length === 0) {
+            vscode.window.showInformationMessage('No build target file selected. Debugging cancelled.');
+            // Optionally reset the view to its initial state
+            // autoDebugViewProvider.clearAllNodes();
+            // autoDebugViewProvider.updateNodeContent("Full trace", "Waiting for build target selection...");
+            return; // User cancelled the dialog
+        }
 
-		// Update the view when debugging starts
+        const selectedFileUri = fileUriArray[0];
+        const selectedFilePath = selectedFileUri.fsPath; // Get the file system path
 
-		// TODO: Send this path to the LLM backend
-		// TODO: Open a view (e.g., Webview) to display streaming output -> Now use autoDebugViewProvider.appendContent()
+		vscode.window.showInformationMessage(`Selected build target: ${selectedFilePath}`);
+		console.log(`Using selected build target path: ${selectedFilePath}`);
+
+		// Update the view provider with the selected file name
+		autoDebugViewProvider.clearAllNodes(); // Clear previous state
+		autoDebugViewProvider.updateNodeContent("Full trace", `Ready to debug: ${path.basename(selectedFilePath)}`);
+		autoDebugViewProvider.updateNodeContent("Chain of thought", "Waiting for LLM analysis...");
+		autoDebugViewProvider.updateNodeContent("Code suggestions etc final thoughts", "Waiting for suggestions...");
+
+
+		// TODO: Send the selectedFilePath to the LLM backend
+		// TODO: Use autoDebugViewProvider.appendNodeContent() for streaming output
 
 	});
 
-	context.subscriptions.push(startDebuggingCommand);
+	context.subscriptions.push(selectAndStartCommand);
 }
 
 // This method is called when your extension is deactivated
