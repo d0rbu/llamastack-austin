@@ -148,7 +148,7 @@ def print_gdb_output_human(gdb_responses: List[Dict[str, Any]]):
         # Convert pygdbmi MixedDict objects to plain dicts for json serialization
         plain_dicts = [dict(r) for r in gdb_responses]
         out_str = json.dumps(plain_dicts, indent=2)
-        console.print(Syntax(out_str, "json", theme="default", line_numbers=False, word_wrap=True))
+        console.print(Syntax(out_str, "json", theme="ansi_dark", line_numbers=False, word_wrap=True))
     except Exception as e:
         console.print(f"[yellow]Could not format GDB output as JSON ({e}), printing raw:[/yellow]")
         for response in gdb_responses:
@@ -181,7 +181,7 @@ def is_gdb_terminated(gdb_responses: List[Dict[str, Any]]) -> bool:
 # --- Main Agent Logic ---
 
 def main(executable_path: str, bug_description: str, model_id: Optional[str]):
-    console.print(Panel(f"Starting GDB Debugger Agent\nExecutable: {executable_path}\nBug: {bug_description}", title="Setup", style="bold blue"))
+    console.print(Panel(f"Starting GDB Debugger Agent\nExecutable: {executable_path}\nBug: {bug_description}", title="Setup", style="bold blue", width=80))
 
     gdbmi: Optional[GdbController] = None
     client: Optional[LlamaStackClient] = None
@@ -230,7 +230,7 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
 
         while current_step < MAX_DEBUG_STEPS and gdb_alive:
             current_step += 1
-            console.print(Panel(f"Debugging Step {current_step}/{MAX_DEBUG_STEPS}", style="bold magenta"))
+            console.print(Panel(f"Debugging Step {current_step}/{MAX_DEBUG_STEPS}", style="bold magenta", width=80))
 
             # Prepare context for LLM
             prompt_context = f"Initial Bug Description: {bug_description}\n\n"
@@ -360,10 +360,10 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
         final_summary = "Summary could not be generated."
         # Attempt to get final summary from LLM if loop didn't end due to critical error
         if agent and history: # Check if agent was initialized and we have history
-            console.print(Panel("Generating Final Summary via LLM", style="bold blue"))
+            console.print(Panel("Generating Final Summary via LLM", style="bold blue", width=80))
             summary_prompt = f"Initial Bug Description: {bug_description}\n\n"
-            summary_prompt += "Based on the following GDB MI interaction history, please provide a summary.\n"
-            summary_prompt += "Identify the likely root cause of the bug, the specific location (file:line or function if possible), and suggest a potential fix.\n\n"
+            summary_prompt += "Based on the following GDB MI interaction history, please provide a summary. Be a little concise and explanatory with a teaching objective.\n"
+            summary_prompt += "Identify the likely root cause of the bug, the specific location (file:line or function if possible), and suggest a potential fix. Use markdown with lists and titles when necessary. Consider a code snippet at the end to help explain.\n\n"
             summary_prompt += "History:\n"
             # Include summarized history in the prompt
             for i, item in enumerate(history):
@@ -392,7 +392,7 @@ def main(executable_path: str, bug_description: str, model_id: Optional[str]):
 
 
         # Print final summary panel
-        console.print(Panel("Debugging Session Summary", style="bold blue"))
+        console.print(Panel("Debugging Session Summary", style="bold blue", width=80))
         console.print(f"Initial Bug: {bug_description}")
         console.print(f"Executable: {executable_path}")
         console.print(f"Total Steps Attempted: {current_step}")
