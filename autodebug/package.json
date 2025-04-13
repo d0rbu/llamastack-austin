@@ -56,7 +56,18 @@
           "name": "Target Picker"
         }
       ]
-    }
+    },
+    "languages": [{
+      "id": "autodebug-output",
+      "mimetypes": [
+          "text/x-code-output"
+      ]
+    }],
+    "grammars": [{
+        "language": "autodebug-output",
+        "scopeName": "autodebug.output",
+        "path": "./syntaxes/autodebug-output.tmLanguage"
+    }]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
