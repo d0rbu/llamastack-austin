@@ -1,4 +1,4 @@
-# GDBuddy
+# GDBuddy (1st Place - Austin 8VC/Meta Llama Stack Hacakthon)
 
 A FastAPI server that integrates with a VS Code extension to provide AI-assisted debugging for C code using GDB and an LLM. This solution streams live trace output and later serves a summary of the debugging session—all without having to wait for the full session to complete.
 
